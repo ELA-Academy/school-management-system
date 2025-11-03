@@ -19,7 +19,15 @@ def create_app():
         app.config.from_object(DevelopmentConfig)
     
     # Rest of your app setup...
-    CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True, allow_headers=["Authorization", "Content-Type"])
+    CORS(
+        app, 
+        resources={r"/api/*": {"origins": [
+            "http://localhost:5173",
+            "https://school-management-system-five-blue.vercel.app/" # PASTE YOUR ACTUAL VERCEL URL HERE
+        ]}}, 
+        supports_credentials=True,
+        allow_headers=["Authorization", "Content-Type"]
+    )
     jwt = JWTManager(app)
     mail.init_app(app)
     init_db(app)
