@@ -1,23 +1,28 @@
+import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
 from flask_migrate import Migrate
 from app.models import db, init_db
-from app.config import DevelopmentConfig
+from app.config import DevelopmentConfig, ProductionConfig # Import both configs
 
 mail = Mail()
-# We do not initialize JWTManager globally anymore to avoid context issues.
 
 def create_app():
     app = Flask(__name__)
 
-    # 1. Load configuration from config.py FIRST.
-    # This is the most critical step.
-    app.config.from_object(DevelopmentConfig)
+    # Check the FLASK_ENV environment variable to decide which config to use.
+    # On PythonAnywhere, we set this to 'production' in the postactivate script.
+    # Locally, it will be unset, so it will fall back to DevelopmentConfig.
+    if os.getenv('FLASK_ENV') == 'production':
+        app.config.from_object(ProductionConfig)
+    else:
+        app.config.from_object(DevelopmentConfig)
 
 
-    # 2. Initialize extensions AFTER config is loaded.
+    # Initialize extensions AFTER config is loaded.
+    # We will update the origins list later with your live Vercel URL.
     CORS(
         app, 
         resources={r"/api/*": {"origins": "http://localhost:5173"}}, 
@@ -26,12 +31,11 @@ def create_app():
     )
     
     # Initialize JWTManager directly with the app object.
-    # Now it is guaranteed to have the configuration loaded.
     jwt = JWTManager(app)
     
     mail.init_app(app)
     init_db(app)
-    Migrate(app, db) # Simplified migrate initialization
+    Migrate(app, db)
 
     # This helps diagnose token issues in the future.
     @jwt.expired_token_loader
@@ -47,8 +51,7 @@ def create_app():
         return jsonify({"message": "Request does not contain an access token", "error": "authorization_required"}), 401
 
 
-    # 3. Register blueprints LAST.
-    # This ensures all extensions are configured before routes are registered.
+    # Register blueprints LAST.
     from app.routes import register_blueprints
     register_blueprints(app)
 
