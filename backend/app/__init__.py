@@ -5,20 +5,29 @@ from flask_jwt_extended import JWTManager
 from flask_mail import Mail
 from flask_migrate import Migrate
 from app.models import db, init_db
-from app.config import DevelopmentConfig, ProductionConfig # Import both configs
+from app.config import DevelopmentConfig, ProductionConfig
+from dotenv import load_dotenv
 
 mail = Mail()
 
 def create_app():
     app = Flask(__name__)
 
-    # Check the FLASK_ENV environment variable to decide which config to use.
-    # On PythonAnywhere, we set this to 'production' in the postactivate script.
-    # Locally, it will be unset, so it will fall back to DevelopmentConfig.
-    if os.getenv('FLASK_ENV') == 'production':
+    # --- THIS IS THE FINAL, ROBUST FIX ---
+    # Determine the environment and load the correct .env file.
+    # We will set FLASK_ENV to 'production' in our production.env file.
+    # On your local machine, FLASK_ENV will be None, so it will load the default '.env'.
+    
+    # Check for a specific production environment file first
+    prod_env_path = os.path.join(os.path.dirname(__file__), '..', 'production.env')
+    if os.path.exists(prod_env_path):
+        load_dotenv(dotenv_path=prod_env_path)
         app.config.from_object(ProductionConfig)
     else:
+        # Fallback to local development .env file
+        load_dotenv()
         app.config.from_object(DevelopmentConfig)
+    # --- END OF FINAL FIX ---
 
 
     # Initialize extensions AFTER config is loaded.
