@@ -1,0 +1,1250 @@
+@import "react-datepicker/dist/react-datepicker.css";
+
+/* === Root Variables: Modern & Refined === */
+:root {
+  --font-primary: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: #eef2ff;
+  --primary-text: #4f46e5;
+
+  --success-color: #10b981;
+  --success-light: #e7f8f3;
+  --success-text: #059669;
+
+  --warning-color: #f59e0b;
+  --warning-light: #fffbeb;
+  --warning-text: #d97706;
+
+  --info-color: #3b82f6;
+  --info-light: #eef6ff;
+  --info-text: #2563eb;
+
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #6b7280;
+  --sidebar-text-active: #ffffff;
+
+  /* The variable is no longer needed for the header, but kept for consistency */
+  --sidebar-header-bg: #ffffff;
+
+  --content-bg: #f8f9fc;
+  --text-color: #1f2937;
+  --text-muted: #6b7280;
+  --card-bg: #ffffff;
+  --border-color: #e5e7eb;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* === Global Styles === */
+body {
+  font-family: var(--font-primary);
+  background-color: var(--content-bg);
+  color: var(--text-color);
+  -webkit-font-smoothing: antialiased; /* Makes fonts look smoother on Mac/iOS */
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 
+==========================================================================
+  SIDEBAR STYLES
+==========================================================================
+*/
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.3s ease;
+}
+
+/* --- THIS IS THE FIX --- */
+.sidebar-header {
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 70px; /* Match header height */
+  background-color: #111827; /* Dark background to make logo visible */
+  border-bottom: 1px solid var(--border-color);
+}
+/* --- END OF FIX --- */
+
+.sidebar-header .logo-img {
+  max-height: 45px;
+  width: auto;
+}
+
+.sidebar-nav {
+  flex-grow: 1;
+  padding: 1rem 0.75rem;
+}
+
+.sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 0.25rem;
+  border-radius: 0.5rem;
+  color: var(--sidebar-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+}
+
+.sidebar .nav-item svg {
+  margin-right: 1rem;
+  font-size: 1.25rem;
+  z-index: 2;
+}
+.sidebar .nav-item span {
+  z-index: 2;
+}
+
+.sidebar .nav-item:hover {
+  background-color: var(--primary-light);
+  color: var(--primary-text);
+  transform: translateX(4px);
+}
+
+.sidebar .nav-item.active {
+  color: var(--sidebar-text-active);
+  background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+  font-weight: 600;
+  box-shadow: 0 4px 12px -1px rgba(79, 70, 229, 0.4);
+}
+
+.sidebar-footer {
+  padding: 1rem 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* === Header === */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 2rem;
+  background-color: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 70px;
+}
+
+.header .form-control,
+.header .input-group-text {
+  background-color: var(--content-bg);
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+.header .form-control:focus {
+  background-color: #fff;
+  border-color: var(--primary-color);
+}
+
+.header-user-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header-icon {
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.user-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.user-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.user-role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.profile-toggle {
+  cursor: pointer;
+  color: var(--text-color);
+}
+.profile-toggle::after {
+  display: none;
+}
+
+/* === Content Area === */
+.content-area {
+  padding: 2rem;
+  flex-grow: 1;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.btn-primary {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: none !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow) !important;
+}
+
+/* === Dashboard Stat Cards === */
+.stat-card .card-body {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+}
+.stat-card-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+.stat-card-info {
+  flex-grow: 1;
+}
+.stat-card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+.stat-card-title {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.bg-primary-light {
+  background-color: var(--primary-light);
+}
+.bg-success-light {
+  background-color: var(--success-light);
+}
+.bg-warning-light {
+  background-color: var(--warning-light);
+}
+.bg-info-light {
+  background-color: var(--info-light);
+}
+
+/* === Modern Table Styling === */
+.content-card {
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  box-shadow: none;
+  overflow: hidden;
+  background-color: var(--card-bg);
+}
+
+.modern-table thead th {
+  background-color: #f9fafb;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modern-table tbody td {
+  padding: 1rem 1.5rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+.modern-table tbody td strong {
+  font-weight: 600;
+}
+.modern-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.modern-table .badge {
+  font-size: 0.75rem;
+  padding: 0.4em 0.8em;
+  font-weight: 600;
+}
+.modern-table .action-buttons .btn {
+  color: var(--text-muted);
+  padding: 0.25rem 0.5rem;
+  transition: color 0.2s ease;
+}
+.modern-table .action-buttons .btn:hover {
+  color: var(--primary-color);
+}
+
+/* === Modern Modal Styles === */
+.modal-content {
+  border-radius: 0.75rem;
+  border: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border-color);
+  padding: 1.5rem;
+}
+.modal-header .modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.modal-header .btn-close {
+  --bs-btn-close-bg: none;
+  font-size: 1rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-body .form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.modal-body .form-control,
+.modal-body .form-select {
+  background-color: var(--content-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.modal-body .form-control:focus,
+.modal-body .form-select:focus {
+  background-color: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 1rem 1.5rem;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.modal-footer .btn-secondary {
+  background-color: #fff;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+.modal-footer .btn-secondary:hover {
+  background-color: var(--content-bg);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+/* 
+==========================================================================
+  NEW STYLES FOR ADMISSIONS MODULE
+==========================================================================
+*/
+
+/* --- Admissions Overview Page --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.stats-grid .stat-card {
+  background-color: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.stats-grid .stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow);
+}
+
+.stats-grid .stat-card h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+}
+
+.stats-grid .stat-card p {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+/* --- Manage Leads Page: Table & Status Badges --- */
+.table-container {
+  background-color: var(--card-bg);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  overflow: hidden; /* Important for border radius on table */
+}
+
+/* Status Badge Styles */
+.status-badge {
+  padding: 0.3em 0.8em;
+  border-radius: 999px; /* Pill shape */
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  text-transform: capitalize;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.status-badge.status-waitlisted {
+  background-color: #f59e0b;
+  color: #fff;
+}
+.status-badge.status-interested {
+  background-color: #3b82f6;
+}
+.status-badge.status-toured {
+  background-color: #06b6d4;
+}
+.status-badge.status-admitted {
+  background-color: #10b981;
+}
+.status-badge.status-enrolled {
+  background-color: #8b5cf6;
+}
+
+/* --- Lead Detail Page --- */
+.lead-detail-page .page-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1.5rem;
+}
+
+.lead-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: -0.5rem; /* Counteract page-header margin */
+}
+
+.details-card {
+  background-color: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+}
+
+.details-card.full-width {
+  grid-column: 1 / -1; /* Span across both columns */
+}
+
+.details-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.details-card p {
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  display: flex;
+}
+.details-card p strong {
+  color: var(--text-color);
+  min-width: 150px;
+  display: inline-block;
+  font-weight: 500;
+}
+.details-card label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+.details-card select,
+.details-card textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background-color: var(--content-bg);
+}
+.details-card select:focus,
+.details-card textarea:focus {
+  background-color: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+  outline: none;
+}
+
+/* Timeline Styles */
+.timeline {
+  margin-top: 1rem;
+}
+.timeline-item {
+  position: relative;
+  padding: 0 1rem 2rem 2rem;
+  border-left: 2px solid var(--border-color);
+}
+.timeline-item:last-child {
+  padding-bottom: 0.5rem;
+}
+.timeline-item:before {
+  content: "";
+  position: absolute;
+  left: -8px; /* Adjust for border width */
+  top: 0.3rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  border: 3px solid var(--content-bg);
+}
+.timeline-item p {
+  margin-bottom: 0.25rem;
+  color: var(--text-color);
+}
+.timeline-item p strong {
+  font-weight: 600;
+}
+.timeline-item small {
+  color: var(--text-muted);
+}
+
+/* --- Custom Task Modal (Lead Detail) --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 24, 39, 0.6); /* Darker overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1055; /* Higher than Bootstrap's modal */
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay .modal-content {
+  background-color: var(--card-bg);
+  padding: 2rem;
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 550px; /* Slightly wider */
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-overlay .modal-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.modal-overlay .modal-content form label {
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+.modal-overlay .modal-content form label:first-of-type {
+  margin-top: 0;
+}
+
+.modal-overlay .modal-content form input,
+.modal-overlay .modal-content form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background-color: var(--content-bg);
+}
+
+.modal-overlay .modal-content form input:focus,
+.modal-overlay .modal-content form textarea:focus {
+  background-color: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+  outline: none;
+}
+
+.modal-overlay .modal-content form textarea {
+  min-height: 80px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+/* END OF FILE AdminModern.css */
+
+/* 
+==========================================================================
+  NEW STYLES FOR ADMISSIONS MODULE
+==========================================================================
+*/
+
+/* --- Admissions Overview Page --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.stats-grid .stat-card {
+  background-color: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.stats-grid .stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow);
+}
+
+.stats-grid .stat-card h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+}
+
+.stats-grid .stat-card p {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+/* --- Manage Leads Page: Table & Status Badges --- */
+.table-container {
+  background-color: var(--card-bg);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  overflow: hidden; /* Important for border radius on table */
+}
+
+/* Status Badge Styles */
+.status-badge {
+  padding: 0.3em 0.8em;
+  border-radius: 999px; /* Pill shape */
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  text-transform: capitalize;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.status-badge.status-waitlisted {
+  background-color: #f59e0b;
+  color: #fff;
+}
+.status-badge.status-interested {
+  background-color: #3b82f6;
+}
+.status-badge.status-toured {
+  background-color: #06b6d4;
+}
+.status-badge.status-admitted {
+  background-color: #10b981;
+}
+.status-badge.status-enrolled {
+  background-color: #8b5cf6;
+}
+
+/* --- Lead Detail Page --- */
+.lead-detail-page .page-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1.5rem;
+}
+
+.lead-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: -0.5rem; /* Counteract page-header margin */
+}
+
+.details-card {
+  background-color: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+}
+
+.details-card.full-width {
+  grid-column: 1 / -1; /* Span across both columns */
+}
+
+.details-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.details-card p {
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  display: flex;
+}
+.details-card p strong {
+  color: var(--text-color);
+  min-width: 150px;
+  display: inline-block;
+  font-weight: 500;
+}
+.details-card label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+.details-card select,
+.details-card textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background-color: var(--content-bg);
+}
+.details-card select:focus,
+.details-card textarea:focus {
+  background-color: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+  outline: none;
+}
+
+/* Timeline Styles */
+.timeline {
+  margin-top: 1rem;
+}
+.timeline-item {
+  position: relative;
+  padding: 0 1rem 2rem 2rem;
+  border-left: 2px solid var(--border-color);
+}
+.timeline-item:last-child {
+  padding-bottom: 0.5rem;
+}
+.timeline-item:before {
+  content: "";
+  position: absolute;
+  left: -8px; /* Adjust for border width */
+  top: 0.3rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  border: 3px solid var(--content-bg);
+}
+.timeline-item p {
+  margin-bottom: 0.25rem;
+  color: var(--text-color);
+}
+.timeline-item p strong {
+  font-weight: 600;
+}
+.timeline-item small {
+  color: var(--text-muted);
+}
+
+/* --- Custom Task Modal (Lead Detail) --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 24, 39, 0.6); /* Darker overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1055; /* Higher than Bootstrap's modal */
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay .modal-content {
+  background-color: var(--card-bg);
+  padding: 2rem;
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 550px; /* Slightly wider */
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-overlay .modal-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.modal-overlay .modal-content form label {
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+.modal-overlay .modal-content form label:first-of-type {
+  margin-top: 0;
+}
+
+.modal-overlay .modal-content form input,
+.modal-overlay .modal-content form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background-color: var(--content-bg);
+}
+
+.modal-overlay .modal-content form input:focus,
+.modal-overlay .modal-content form textarea:focus {
+  background-color: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-light);
+  outline: none;
+}
+
+.modal-overlay .modal-content form textarea {
+  min-height: 80px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.activity-feed {
+  position: relative;
+}
+
+/* Creates the main vertical timeline bar */
+.activity-feed::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 14px; /* Aligns with center of icons */
+  bottom: 10px;
+  width: 2px;
+  background-color: var(--border-color);
+}
+
+.activity-item {
+  display: flex;
+  position: relative;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.activity-item:last-child {
+  margin-bottom: 0;
+}
+
+.activity-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--card-bg);
+  border: 2px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  z-index: 1; /* Sits on top of the timeline bar */
+}
+
+.activity-content {
+  flex-grow: 1;
+  padding-top: 0.25rem;
+}
+
+.activity-content p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.activity-content p strong {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.activity-content .target-info {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.activity-content .timestamp {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+/* 
+==========================================================================
+  NEW STYLES FOR REDESIGNED TASK LIST
+==========================================================================
+*/
+
+.modern-task-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modern-task-list .task-item:first-child {
+  padding-top: 0;
+}
+
+.modern-task-list .task-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.task-item-main {
+  flex-grow: 1;
+}
+
+.task-title {
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap; /* Allows wrapping on smaller screens */
+  align-items: center;
+  gap: 0.5rem 1.5rem; /* Vertical and horizontal gap */
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.due-date,
+.task-assignees {
+  display: flex;
+  align-items: center;
+}
+
+.task-meta svg {
+  margin-right: 0.5rem;
+  flex-shrink: 0; /* Prevents icon from shrinking */
+}
+
+.due-date.overdue {
+  color: #ef4444; /* A modern, slightly softer red */
+  font-weight: 500;
+}
+
+.task-item-actions {
+  flex-shrink: 0;
+}
+
+/* 
+==========================================================================
+  STYLES FOR NOTIFICATION DROPDOWN (NO SCROLLBAR)
+==========================================================================
+*/
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  font-size: 0.65rem;
+  padding: 0.2em 0.5em;
+  border: 1px solid var(--card-bg);
+}
+
+.notification-dropdown {
+  width: 360px;
+  padding: 0;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  margin-top: 0.5rem !important;
+}
+
+.notification-header {
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notification-list {
+  max-height: 350px;
+  overflow-y: auto;
+  padding: 0.5rem;
+
+  /* --- THIS IS THE FIX --- */
+  /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for Firefox */
+  scrollbar-width: none;
+  /* Hide scrollbar for IE, Edge */
+  -ms-overflow-style: none;
+}
+
+.notification-item {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem !important;
+  white-space: normal;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.notification-item:hover {
+  background-color: var(--content-bg) !important;
+}
+
+.unread-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  margin-top: 5px;
+}
+
+.notification-content {
+  flex-grow: 1;
+}
+
+.notification-message {
+  margin: 0;
+  color: var(--text-color);
+  line-height: 1.4;
+}
+
+.notification-time {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.no-notifications {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.notification-footer {
+  text-align: center;
+  font-weight: 500;
+  color: var(--primary-color);
+  padding: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.notification-footer:hover {
+  background-color: var(--primary-light) !important;
+}
+
+/* 
+==========================================================================
+  STYLES FOR INTERACTIVE TASK LIST
+==========================================================================
+*/
+
+.task-item {
+  /* ... (existing styles) ... */
+  display: flex;
+  align-items: center; /* Vertically align checkbox and content */
+  gap: 1rem;
+}
+
+/* Style for the checkbox itself */
+.task-checkbox {
+  flex-shrink: 0;
+}
+.task-checkbox .form-check-input {
+  width: 1.25em;
+  height: 1.25em;
+  cursor: pointer;
+  border-color: var(--border-color);
+}
+.task-checkbox .form-check-input:checked {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+}
+.task-checkbox .form-check-input:focus {
+  box-shadow: 0 0 0 3px var(--success-light);
+}
+.task-checkbox .form-check-input:disabled {
+  cursor: not-allowed;
+}
+
+/* Styles for a completed task item */
+.task-item.completed .task-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.task-item.completed .task-meta {
+  opacity: 0.7;
+}
+
+/* 
+==========================================================================
+  STYLES FOR PAGINATION CONTROLS
+==========================================================================
+*/
+.pagination-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0; /* Add some vertical padding */
+}
+
+.page-info {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* 
+==========================================================================
+  NEW STAT CARD & THEME STYLES
+==========================================================================
+*/
+.stat-card .card-body {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+}
+.stat-card-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+.stat-card-info {
+  flex-grow: 1;
+}
+.stat-card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-color);
+}
+.stat-card-title {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Color Theme Backgrounds */
+.bg-primary-light {
+  background-color: var(--primary-light);
+}
+.bg-success-light {
+  background-color: var(--success-light);
+}
+.bg-warning-light {
+  background-color: var(--warning-light);
+}
+.bg-info-light {
+  background-color: var(--info-light);
+}
+
+/* Color Theme Text (for icons) */
+.text-primary {
+  color: var(--primary-text) !important;
+}
+.text-success {
+  color: var(--success-text) !important;
+}
+.text-warning {
+  color: var(--warning-text) !important;
+}
+.text-info {
+  color: var(--info-text) !important;
+}
