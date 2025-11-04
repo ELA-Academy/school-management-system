@@ -18,8 +18,12 @@ def register_blueprints(app):
     app.register_blueprint(staff_bp, url_prefix="/api/staff")
     from .activity_routes import activity_bp
     app.register_blueprint(activity_bp, url_prefix="/api/activity")
-    from .notification_routes import notification_bp # Add this line
-    app.register_blueprint(notification_bp, url_prefix="/api/notifications") # Add this line
+    from .notification_routes import notification_bp
+    app.register_blueprint(notification_bp, url_prefix="/api/notifications")
+    from .messaging_routes import messaging_bp
+    app.register_blueprint(messaging_bp, url_prefix="/api/messaging")
+    from .push_routes import push_bp # Add this line
+    app.register_blueprint(push_bp, url_prefix="/api/push") # Add this line
     
     # Departmental blueprints
     from .admissions_routes import admissions_bp

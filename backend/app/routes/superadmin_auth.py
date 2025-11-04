@@ -127,6 +127,7 @@ def login_super_admin():
         return jsonify({"msg": "Invalid email or password."}), 401
     
     additional_claims = {
+        "id": admin.id,
         "role": "superadmin",
         "name": admin.name
     }

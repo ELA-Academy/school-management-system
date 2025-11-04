@@ -1,13 +1,13 @@
 import os
+import json
 from flask import current_app, render_template
 from flask_mail import Message
 from threading import Thread
 from app.models import db
 from app.models.notification_model import Notification
-from app.models.department_model import Department
-from app.models.staff_model import Staff
+from app.models.push_subscription_model import PushSubscription
+from pywebpush import webpush, WebPushException
 
-# --- Background Email Sending (No changes here) ---
 def send_async_email(app, msg):
     with app.app_context():
         from app import mail
@@ -24,52 +24,83 @@ def send_email_in_background(subject, recipients, template_data):
     thr.start()
     return thr
 
-# --- Central Notification Creation Logic (Updated) ---
+def send_push_notification(user, payload):
+    """Finds a user's subscription and sends a push notification."""
+    from app.models.staff_model import Staff
+    
+    if isinstance(user, Staff):
+        sub_record = PushSubscription.query.filter_by(staff_id=user.id).first()
+    else: # SuperAdmin
+        sub_record = PushSubscription.query.filter_by(super_admin_id=user.id).first()
+
+    if not sub_record:
+        current_app.logger.info(f"No push subscription found for user {user.id}.")
+        return
+
+    try:
+        frontend_base_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        full_url = f"{frontend_base_url}{payload.get('url', '/')}"
+        
+        push_payload_data = {
+            "title": payload.get('title', 'New Notification'),
+            "body": payload.get('body'),
+            "url": full_url
+        }
+
+        webpush(
+            subscription_info=json.loads(sub_record.subscription_json),
+            data=json.dumps(push_payload_data),
+            vapid_private_key=os.getenv("VAPID_PRIVATE_KEY"),
+            vapid_claims={"sub": os.getenv("VAPID_CLAIMS_EMAIL")}
+        )
+        current_app.logger.info(f"Successfully sent push to user {user.id}")
+    except WebPushException as ex:
+        current_app.logger.error(f"WebPush Error for user {user.id}: {ex}")
+        if ex.response and ex.response.status_code in [404, 410]:
+            current_app.logger.warning(f"Deleting expired subscription for user {user.id}")
+            db.session.delete(sub_record)
+            db.session.commit()
+    except Exception as e:
+        current_app.logger.error(f"An unexpected error occurred in send_push_notification: {e}")
+
+
 def create_notifications_and_send_emails(recipients, message, target_obj=None):
     """
-    Creates database notifications and sends emails to a list of staff recipients.
-    
-    :param recipients: A list of Staff objects to notify.
-    :param message: The notification message string.
-    :param target_obj: The database object the notification is about (e.g., a Lead or Task).
+    Central function for creating in-app, email, and push notifications.
     """
     if not recipients:
         return
 
-    # Determine the relative link for the notification
-    target_link = None
+    target_link = "/"
     if target_obj:
         if target_obj.__class__.__name__ == 'Lead':
             target_link = f"/admin/admissions/leads/{target_obj.secure_token}"
         elif target_obj.__class__.__name__ == 'Task' and hasattr(target_obj, 'lead'):
              target_link = f"/admin/admissions/leads/{target_obj.lead.secure_token}"
 
-    # Create DB notifications for each recipient
-    for staff in recipients:
-        new_notification = Notification(
-            staff_id=staff.id,
-            message=message,
-            target_type=target_obj.__class__.__name__ if target_obj else None,
-            target_id=target_obj.id if target_obj else None,
-            target_link=target_link # The relative link for in-app navigation
-        )
-        db.session.add(new_notification)
-
-    # --- THIS IS THE FIX ---
-    # Get the base URL for the frontend from our new environment variable.
-    # Fallback to localhost if it's not set (for local development).
     frontend_base_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
-    
-    # Construct the full, absolute URL for the email button
-    full_action_link = f"{frontend_base_url}{target_link}" if target_link else None
-    # --- END OF FIX ---
+    full_action_link = f"{frontend_base_url}{target_link}"
 
-    # Prepare and send one email to all recipients
-    recipient_emails = [staff.email for staff in recipients]
-    email_data = {
-        'message': message,
-        'action_link': full_action_link # Use the full link here
-    }
+    recipient_emails = [user.email for user in recipients]
+    
+    for user in recipients:
+        if user.__class__.__name__ == 'Staff':
+            db.session.add(Notification(
+                staff_id=user.id,
+                message=message,
+                target_type=target_obj.__class__.__name__ if target_obj else None,
+                target_id=target_obj.id if target_obj else None,
+                target_link=target_link
+            ))
+
+        push_payload = {
+            "title": "ELA Academy Notification",
+            "body": message,
+            "url": target_link
+        }
+        send_push_notification(user, push_payload)
+    
+    email_data = { 'message': message, 'action_link': full_action_link }
     send_email_in_background(
         subject="You have a new notification",
         recipients=recipient_emails,

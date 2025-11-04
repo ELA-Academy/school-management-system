@@ -25,9 +25,8 @@ def create_app():
     else:
         app.config.from_object(DevelopmentConfig)
 
-    # --- THIS IS THE FINAL FIX ---
-    # Read the allowed origins from the environment variable we just set.
-    # Fallback to localhost for safety.
+    # The resource path must match all nested API routes.
+    # The pattern r"/api/*" allows any path that starts with /api/.
     origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')
     
     CORS(

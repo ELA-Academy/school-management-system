@@ -30,6 +30,7 @@ import AdministrationDashboard from "./pages/admin/administration/Administration
 import GenericDashboard from "./pages/admin/department/GenericDashboard";
 import ActivityFeedPage from "./pages/admin/ActivityFeedPage";
 import ProfilePage from "./pages/admin/ProfilePage";
+import MessagingPage from "./pages/admin/MessagingPage";
 
 function App() {
   return (
@@ -70,6 +71,7 @@ function App() {
               {/* Shared Routes (accessible by all logged-in users) */}
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<ProfilePage />} />
+              <Route path="messaging" element={<MessagingPage />} />
 
               {/* Staff & Department Routes */}
               <Route path="admissions" element={<AdmissionsDashboard />} />

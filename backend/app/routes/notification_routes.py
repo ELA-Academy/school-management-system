@@ -2,16 +2,23 @@ from flask import Blueprint, jsonify
 from app.models import db
 from app.models.staff_model import Staff
 from app.models.notification_model import Notification
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 notification_bp = Blueprint('notifications', __name__)
 
 @notification_bp.route('', methods=['GET'])
 @jwt_required()
 def get_notifications():
+    # Check the user's role. SuperAdmins don't have personal notifications
+    # in the current system, so we return an empty list instead of a 404.
+    claims = get_jwt()
+    if claims.get('role') != 'staff':
+        return jsonify([]), 200
+
     current_user_email = get_jwt_identity()
     staff = Staff.query.filter_by(email=current_user_email).first()
     if not staff:
+        # This will now only apply if a staff token is somehow invalid
         return jsonify({"error": "Staff member not found"}), 404
         
     # Fetch unread notifications, most recent first
@@ -22,6 +29,10 @@ def get_notifications():
 @notification_bp.route('/mark-all-as-read', methods=['POST'])
 @jwt_required()
 def mark_all_as_read():
+    claims = get_jwt()
+    if claims.get('role') != 'staff':
+        return jsonify({"message": "No notifications to mark"}), 200
+
     current_user_email = get_jwt_identity()
     staff = Staff.query.filter_by(email=current_user_email).first()
     if not staff:

@@ -18,9 +18,9 @@ def login():
     if not staff_member or not staff_member.is_active or not staff_member.check_password(password):
         return jsonify({"msg": "Invalid credentials"}), 401
 
-    # --- THIS IS THE FIX ---
-    # The token now contains lists of names and routes for ALL assigned departments
+    # Add the staff member's database ID to the token payload.
     additional_claims = {
+        "id": staff_member.id, # Add this line
         "name": staff_member.name,
         "departmentNames": [d.name for d in staff_member.departments],
         "dashboardRoutes": [d.dashboard_route for d in staff_member.departments if d.dashboard_route],

@@ -12,6 +12,7 @@ import {
   ClipboardDataFill,
   GearFill,
   PersonCircle,
+  ChatDotsFill, // Import the new icon
 } from "react-bootstrap-icons";
 import { Nav } from "react-bootstrap";
 import { useAuth } from "../../context/AuthContext";
@@ -19,9 +20,6 @@ import { useAuth } from "../../context/AuthContext";
 const Sidebar = () => {
   const { user } = useAuth();
 
-  // --- REVERTED TO USING DEPARTMENT NAMES ---
-  // This is the simple, robust logic that works for ALL department types.
-  // The key is now the exact department name again.
   const navLinksConfig = {
     superadmin: [
       {
@@ -38,7 +36,6 @@ const Sidebar = () => {
         label: "Activity Feed",
       },
     ],
-    // The key is the EXACT name of the department in the database.
     "Admission Department": [
       {
         path: "/admin/admissions",
@@ -69,15 +66,12 @@ const Sidebar = () => {
       },
     ],
   };
-  // --- END OF REVERT ---
 
   const getLinksForUser = () => {
     if (user?.role === "superadmin") {
       return navLinksConfig.superadmin;
     }
 
-    // --- REVERTED LOGIC ---
-    // This correctly iterates over the user's department names from the token.
     if (user?.role === "staff" && user.departmentNames) {
       const combinedLinks = new Map();
       user.departmentNames.forEach((deptName) => {
@@ -90,7 +84,6 @@ const Sidebar = () => {
       });
       return Array.from(combinedLinks.values());
     }
-    // --- END OF REVERT ---
     return [];
   };
 
@@ -104,7 +97,6 @@ const Sidebar = () => {
           alt="ELA Academy Logo"
           className="logo-img"
         />
-        {/* <span className="logo-text">ELA Academy</span> */}
       </div>
 
       <div className="sidebar-nav">
@@ -122,6 +114,12 @@ const Sidebar = () => {
               <span>{link.label}</span>
             </Nav.Link>
           ))}
+          {/* --- THIS IS THE NEW LINK --- */}
+          {/* This link is visible to all authenticated users (Staff and Superadmin) */}
+          <Nav.Link as={NavLink} to="/admin/messaging" className="nav-item">
+            <ChatDotsFill />
+            <span>Messaging</span>
+          </Nav.Link>
         </Nav>
 
         <div className="sidebar-menu-title">Other</div>

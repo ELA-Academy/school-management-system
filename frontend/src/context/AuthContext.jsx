@@ -20,23 +20,25 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // --- NOTIFICATION STATE ---
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.length;
 
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const data = await getNotifications();
-      setNotifications(data);
+      // Only fetch notifications for staff users
+      if (user && user.role === "staff") {
+        const data = await getNotifications();
+        setNotifications(data);
+      } else {
+        setNotifications([]);
+      }
     } catch (error) {
       console.error("Failed to poll notifications.");
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(() => {
       fetchNotifications();
     }, 30000);
@@ -47,12 +49,11 @@ export const AuthProvider = ({ children }) => {
   const markAllNotificationsAsRead = async () => {
     try {
       await markAllAsRead();
-      setNotifications([]); // Immediately clear notifications from UI
+      setNotifications([]);
     } catch (error) {
       console.error("Failed to mark notifications as read.");
     }
   };
-  // --- END NOTIFICATION STATE ---
 
   const loadUserFromToken = useCallback(async () => {
     const token = localStorage.getItem("authToken");
@@ -60,13 +61,17 @@ export const AuthProvider = ({ children }) => {
       try {
         const decoded = jwtDecode(token);
         if (decoded.exp * 1000 > Date.now()) {
+          // --- THIS IS THE FIX ---
+          // Store the user's database ID in the context.
           setUser({
+            id: decoded.id, // Add this line
             email: decoded.sub,
             name: decoded.name,
             role: decoded.role,
             departmentNames: decoded.departmentNames || [],
             dashboardRoutes: decoded.dashboardRoutes || [],
           });
+          // --- END OF FIX ---
           setIsAuthenticated(true);
         } else {
           logout();
@@ -83,7 +88,6 @@ export const AuthProvider = ({ children }) => {
     loadUserFromToken();
   }, [loadUserFromToken]);
 
-  // Fetch initial notifications after user is authenticated
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
@@ -115,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("authToken");
     setUser(null);
     setIsAuthenticated(false);
-    setNotifications([]); // Clear notifications on logout
+    setNotifications([]);
   };
 
   const value = {
@@ -125,7 +129,6 @@ export const AuthProvider = ({ children }) => {
     staffLogin,
     superAdminLogin,
     logout,
-    // --- EXPOSE NOTIFICATION VALUES ---
     notifications,
     unreadCount,
     markAllNotificationsAsRead,

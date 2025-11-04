@@ -3,33 +3,35 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeUser } from "../../utils/push-notifications";
 import "../../styles/AdminModern.css";
 
 const AdminLayout = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    // This effect runs when the user first logs in and lands at "/admin"
+    // Subscribe user to push notifications once they are authenticated.
+    // This will run once per login session.
+    if (isAuthenticated) {
+      subscribeUser();
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    // Handles initial redirect logic
     if (
       user &&
       (location.pathname === "/admin" || location.pathname === "/admin/")
     ) {
       if (user.role === "superadmin") {
-        // Superadmins always go to the main dashboard
         navigate("/admin/dashboard", { replace: true });
       } else if (user.role === "staff") {
-        // Staff members are redirected based on their department's route
         if (user.dashboardRoutes && user.dashboardRoutes.length > 0) {
-          // If a specific route exists (e.g., /admin/admissions), go there
           navigate(user.dashboardRoutes[0], { replace: true });
         } else {
-          // --- THIS IS THE FIX ---
-          // If no specific route is set for their department, send them to the
-          // generic "My Dashboard" page instead of the superadmin's page.
           navigate("/admin/my-dashboard", { replace: true });
-          // --- END OF FIX ---
         }
       }
     }

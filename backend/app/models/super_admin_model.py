@@ -11,6 +11,14 @@ class SuperAdmin(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Relationship to the association object
+    conversation_associations = db.relationship('ConversationParticipant', back_populates='super_admin')
+
+    @property
+    def conversations(self):
+        """A property to easily get the conversations a super admin is in."""
+        return [assoc.conversation for assoc in self.conversation_associations]
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 

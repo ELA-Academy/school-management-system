@@ -2,7 +2,6 @@ from app.models import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# --- NEW: Association Table for Many-to-Many Relationship ---
 staff_department_assignments = db.Table('staff_department_assignments',
     db.Column('staff_id', db.Integer, db.ForeignKey('staff.id'), primary_key=True),
     db.Column('department_id', db.Integer, db.ForeignKey('departments.id'), primary_key=True)
@@ -18,12 +17,16 @@ class Staff(db.Model):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # --- REMOVED ---
-    # department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=False)
-
-    # --- NEW RELATIONSHIP ---
     departments = db.relationship('Department', secondary=staff_department_assignments, lazy='subquery',
         backref=db.backref('staff_members', lazy=True))
+
+    # Relationship to the association object
+    conversation_associations = db.relationship('ConversationParticipant', back_populates='staff')
+    
+    @property
+    def conversations(self):
+        """A property to easily get the conversations a staff member is in."""
+        return [assoc.conversation for assoc in self.conversation_associations]
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -37,9 +40,7 @@ class Staff(db.Model):
             'name': self.name,
             'email': self.email,
             'is_active': self.is_active,
-            # Return a list of department IDs and names now
             'department_ids': [d.id for d in self.departments],
             'department_names': [d.name for d in self.departments],
-            # --- FIX: Add 'Z' to specify UTC timezone ---
             'created_at': self.created_at.isoformat() + 'Z'
         }
