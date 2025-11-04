@@ -19,11 +19,13 @@ def create_app():
         app.config.from_object(DevelopmentConfig)
     
     # Rest of your app setup...
+
+    # Vercel URL added for production
     CORS(
         app, 
         resources={r"/api/*": {"origins": [
             "http://localhost:5173",
-            "https://school-management-system-five-blue.vercel.app/" # PASTE YOUR ACTUAL VERCEL URL HERE
+            "https://school-management-system-five-blue.vercel.app/"
         ]}}, 
         supports_credentials=True,
         allow_headers=["Authorization", "Content-Type"]
@@ -46,6 +48,6 @@ def create_app():
 
     @app.route('/')
     def home():
-        return {"message": "School Management API is running successfully!"}
+        return {"message": "✅✅School Management API is running successfully!"}
 
     return app
