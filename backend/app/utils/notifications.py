@@ -1,3 +1,4 @@
+import os
 from flask import current_app, render_template
 from flask_mail import Message
 from threading import Thread
@@ -6,7 +7,7 @@ from app.models.notification_model import Notification
 from app.models.department_model import Department
 from app.models.staff_model import Staff
 
-# --- Background Email Sending ---
+# --- Background Email Sending (No changes here) ---
 def send_async_email(app, msg):
     with app.app_context():
         from app import mail
@@ -23,7 +24,7 @@ def send_email_in_background(subject, recipients, template_data):
     thr.start()
     return thr
 
-# --- Central Notification Creation Logic ---
+# --- Central Notification Creation Logic (Updated) ---
 def create_notifications_and_send_emails(recipients, message, target_obj=None):
     """
     Creates database notifications and sends emails to a list of staff recipients.
@@ -35,7 +36,7 @@ def create_notifications_and_send_emails(recipients, message, target_obj=None):
     if not recipients:
         return
 
-    # Determine the link for the notification
+    # Determine the relative link for the notification
     target_link = None
     if target_obj:
         if target_obj.__class__.__name__ == 'Lead':
@@ -50,15 +51,24 @@ def create_notifications_and_send_emails(recipients, message, target_obj=None):
             message=message,
             target_type=target_obj.__class__.__name__ if target_obj else None,
             target_id=target_obj.id if target_obj else None,
-            target_link=target_link
+            target_link=target_link # The relative link for in-app navigation
         )
         db.session.add(new_notification)
+
+    # --- THIS IS THE FIX ---
+    # Get the base URL for the frontend from our new environment variable.
+    # Fallback to localhost if it's not set (for local development).
+    frontend_base_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    
+    # Construct the full, absolute URL for the email button
+    full_action_link = f"{frontend_base_url}{target_link}" if target_link else None
+    # --- END OF FIX ---
 
     # Prepare and send one email to all recipients
     recipient_emails = [staff.email for staff in recipients]
     email_data = {
         'message': message,
-        'action_link': f"http://localhost:5173{target_link}" if target_link else None
+        'action_link': full_action_link # Use the full link here
     }
     send_email_in_background(
         subject="You have a new notification",
