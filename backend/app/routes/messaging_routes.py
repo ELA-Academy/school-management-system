@@ -9,6 +9,7 @@ from app.utils.notifications import send_email_in_background, send_push_notifica
 from sqlalchemy import and_, or_
 from datetime import datetime, timezone, timedelta
 import json
+import os
 
 messaging_bp = Blueprint('messaging', __name__)
 
@@ -192,17 +193,17 @@ def send_message(conversation_id):
         if p_assoc.last_notified_at is None:
             should_send_realtime_notification = True
         else:
-            # --- THIS IS THE FIX ---
-            # Corrected the typo from 'last_not_at' to 'last_notified_at'
             last_notified_aware = p_assoc.last_notified_at.replace(tzinfo=timezone.utc)
             if (now - last_notified_aware) > notification_cooldown:
                 should_send_realtime_notification = True
-            # --- END OF FIX ---
         
         if should_send_realtime_notification:
+            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+            action_link = f"{frontend_url}/admin/messaging"
+            
             email_data = {
                 'message': f"You have a new message from {user.name} in one of your conversations.",
-                'action_link': "https://your-frontend-url.com/admin/messaging" # IMPORTANT: UPDATE THIS URL
+                'action_link': action_link
             }
             send_email_in_background(
                 subject="You have a new message",
