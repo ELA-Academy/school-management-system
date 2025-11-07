@@ -1,9 +1,14 @@
-import React from "react";
-import { Form, Dropdown } from "react-bootstrap";
+import React, { useState } from "react";
+import { Form, Dropdown, Button } from "react-bootstrap";
 import { v4 as uuidv4 } from "uuid";
 import FormField from "./FormField";
+import SubStepper from "./SubStepper";
 
 const FormBuilderStep1 = ({ formState, setFormState }) => {
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const sections = formState.form_structure_json?.sections || [];
+  const activeSection = sections[activeSectionIndex];
+
   const handleTitleChange = (e) => {
     setFormState({
       ...formState,
@@ -15,7 +20,7 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
   };
 
   const handleSectionToggle = (sectionId) => {
-    const updatedSections = formState.form_structure_json.sections.map((s) =>
+    const updatedSections = sections.map((s) =>
       s.id === sectionId ? { ...s, visible: !s.visible } : s
     );
     setFormState({
@@ -34,7 +39,7 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
       label: "",
       required: true,
     };
-    const updatedSections = formState.form_structure_json.sections.map((s) =>
+    const updatedSections = sections.map((s) =>
       s.id === sectionId ? { ...s, fields: [...s.fields, newField] } : s
     );
     setFormState({
@@ -47,7 +52,7 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
   };
 
   const updateField = (sectionId, fieldId, updatedField) => {
-    const updatedSections = formState.form_structure_json.sections.map((s) => {
+    const updatedSections = sections.map((s) => {
       if (s.id === sectionId) {
         return {
           ...s,
@@ -66,7 +71,7 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
   };
 
   const deleteField = (sectionId, fieldId) => {
-    const updatedSections = formState.form_structure_json.sections.map((s) => {
+    const updatedSections = sections.map((s) => {
       if (s.id === sectionId) {
         return { ...s, fields: s.fields.filter((f) => f.id !== fieldId) };
       }
@@ -90,29 +95,34 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
         className="form-title-input"
         placeholder="New Student Enrollment Form"
       />
-      {formState.form_structure_json?.sections.map((section) => (
-        <div className="form-section" key={section.id}>
+
+      <SubStepper sections={sections} activeIndex={activeSectionIndex} />
+
+      {activeSection && (
+        <div className="form-section">
           <div className="form-section-header">
-            <h3>{section.title}</h3>
+            <h3>{activeSection.title}</h3>
             <Form.Check
               type="switch"
-              id={`section-toggle-${section.id}`}
+              id={`section-toggle-${activeSection.id}`}
               label="Visible"
-              checked={section.visible}
-              onChange={() => handleSectionToggle(section.id)}
+              checked={activeSection.visible}
+              onChange={() => handleSectionToggle(activeSection.id)}
             />
           </div>
-          {section.visible && (
+          {activeSection.visible && (
             <>
               <div className="form-field-list">
-                {section.fields.map((field) => (
+                {activeSection.fields.map((field) => (
                   <FormField
                     key={field.id}
                     field={field}
                     onUpdate={(fieldId, updatedField) =>
-                      updateField(section.id, fieldId, updatedField)
+                      updateField(activeSection.id, fieldId, updatedField)
                     }
-                    onDelete={(fieldId) => deleteField(section.id, fieldId)}
+                    onDelete={(fieldId) =>
+                      deleteField(activeSection.id, fieldId)
+                    }
                   />
                 ))}
               </div>
@@ -123,38 +133,38 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
                   </Dropdown.Toggle>
                   <Dropdown.Menu>
                     <Dropdown.Item
-                      onClick={() => addField(section.id, "short_answer")}
+                      onClick={() => addField(activeSection.id, "short_answer")}
                     >
                       Short Answer
                     </Dropdown.Item>
                     <Dropdown.Item
-                      onClick={() => addField(section.id, "paragraph")}
+                      onClick={() => addField(activeSection.id, "paragraph")}
                     >
                       Paragraph
                     </Dropdown.Item>
                     <Dropdown.Item
-                      onClick={() => addField(section.id, "checkbox")}
+                      onClick={() => addField(activeSection.id, "checkbox")}
                     >
                       Checkbox
                     </Dropdown.Item>
                     <Dropdown.Item
-                      onClick={() => addField(section.id, "dropdown")}
+                      onClick={() => addField(activeSection.id, "dropdown")}
                     >
                       Dropdown
                     </Dropdown.Item>
                     <Dropdown.Item
-                      onClick={() => addField(section.id, "date_picker")}
+                      onClick={() => addField(activeSection.id, "date_picker")}
                     >
                       Date Picker
                     </Dropdown.Item>
                     <Dropdown.Item
-                      onClick={() => addField(section.id, "file_upload")}
+                      onClick={() => addField(activeSection.id, "file_upload")}
                     >
                       File Upload
                     </Dropdown.Item>
                     <Dropdown.Divider />
                     <Dropdown.Item
-                      onClick={() => addField(section.id, "line_divider")}
+                      onClick={() => addField(activeSection.id, "line_divider")}
                     >
                       Line Divider
                     </Dropdown.Item>
@@ -164,7 +174,24 @@ const FormBuilderStep1 = ({ formState, setFormState }) => {
             </>
           )}
         </div>
-      ))}
+      )}
+
+      <div className="sub-step-navigation">
+        <Button
+          variant="secondary"
+          onClick={() => setActiveSectionIndex((prev) => prev - 1)}
+          disabled={activeSectionIndex === 0}
+        >
+          Back
+        </Button>
+        <Button
+          className="ms-2"
+          onClick={() => setActiveSectionIndex((prev) => prev + 1)}
+          disabled={activeSectionIndex >= sections.length - 1}
+        >
+          Next
+        </Button>
+      </div>
     </div>
   );
 };

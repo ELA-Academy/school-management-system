@@ -59,10 +59,6 @@
   background-color: var(--content-bg);
 }
 
-.form-section {
-  margin-bottom: 2rem;
-}
-
 .form-section-header {
   display: flex;
   justify-content: space-between;
@@ -74,6 +70,7 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
+  color: var(--text-muted);
 }
 
 .form-field-list {
@@ -153,4 +150,55 @@
   color: var(--text-muted);
   font-weight: 500;
   margin-bottom: 2rem;
+}
+
+/* === NEW SUB-STEPPER STYLES === */
+.sub-stepper {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+}
+
+.sub-step {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.sub-step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--content-bg);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.sub-step.active .sub-step-number {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #fff;
+}
+
+.sub-step.active {
+  color: var(--primary-color);
+}
+
+.sub-step-navigation {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
 }
