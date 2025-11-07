@@ -19,5 +19,7 @@ def init_db(app):
         from app.models.notification_model import Notification
         from app.models.conversation_model import Conversation, Message, ConversationParticipant
         from app.models.push_subscription_model import PushSubscription
+        from app.models.enrollment_form_model import EnrollmentForm
+        from app.models.enrollment_submission_model import EnrollmentSubmission
         
         db.create_all()

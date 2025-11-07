@@ -4,19 +4,27 @@ from app.models.task_model import Task
 from app.models.lead_model import Lead
 from app.models.department_model import Department
 from app.models.staff_model import Staff
-from app.models.super_admin_model import SuperAdmin # Import the SuperAdmin model
+from app.models.super_admin_model import SuperAdmin
 from app.models.activity_log_model import log_activity
 from app.utils.notifications import create_notifications_and_send_emails
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt # Import get_jwt
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from sqlalchemy import or_
 from datetime import datetime
 
 task_bp = Blueprint('tasks', __name__)
 
+def get_actor_from_jwt():
+    claims = get_jwt()
+    current_user_email = get_jwt_identity()
+    if claims.get('role') == 'superadmin':
+        return SuperAdmin.query.filter_by(email=current_user_email).first()
+    elif claims.get('role') == 'staff':
+        return Staff.query.filter_by(email=current_user_email).first()
+    return None
+
 @task_bp.route('/my-tasks', methods=['GET'])
 @jwt_required()
 def get_my_tasks():
-    # This route is specifically for staff, so it correctly only checks the Staff table. No change needed.
     current_user_email = get_jwt_identity()
     staff_member = Staff.query.filter_by(email=current_user_email).first()
 
@@ -34,11 +42,31 @@ def get_my_tasks():
 
     return jsonify([task.to_dict() for task in tasks]), 200
 
+@task_bp.route('/my-tasks/count', methods=['GET'])
+@jwt_required()
+def get_my_tasks_count():
+    """Returns the count of active (not completed) tasks for a staff member."""
+    current_user_email = get_jwt_identity()
+    staff_member = Staff.query.filter_by(email=current_user_email).first()
+
+    if not staff_member:
+        return jsonify({"count": 0}), 200 # Return 0 if not a staff member
+
+    staff_department_ids = [dept.id for dept in staff_member.departments]
+
+    count = Task.query.filter(
+        Task.status != 'Completed',
+        or_(
+            Task.assigned_departments.any(Department.id.in_(staff_department_ids)),
+            Task.assigned_staff.any(id=staff_member.id)
+        )
+    ).count()
+
+    return jsonify({"count": count}), 200
 
 @task_bp.route('/lead/<string:lead_token>', methods=['GET'])
 @jwt_required()
 def get_tasks_for_lead(lead_token):
-    # This route is generic and has no user-specific logic, so no change is needed.
     lead = Lead.query.filter_by(secure_token=lead_token).first_or_404()
     tasks = Task.query.filter_by(lead_id=lead.id).order_by(Task.created_at.desc()).all()
     return jsonify([task.to_dict() for task in tasks]), 200
@@ -47,23 +75,9 @@ def get_tasks_for_lead(lead_token):
 @task_bp.route('', methods=['POST'])
 @jwt_required()
 def create_task():
-    # --- THIS IS THE FIX ---
-    # Determine the actor based on their role from the JWT token
-    claims = get_jwt()
-    current_user_email = get_jwt_identity()
-    actor = None
-    
-    if claims.get('role') == 'superadmin':
-        actor = SuperAdmin.query.filter_by(email=current_user_email).first()
-    elif claims.get('role') == 'staff':
-        # SuperAdmins might not have a staff ID, so we need a check
-        created_by_staff_id_field = 'created_by_staff_id'
-        actor = Staff.query.filter_by(email=current_user_email).first()
-
+    actor = get_actor_from_jwt()
     if not actor:
-        # This now correctly returns a 401 Unauthorized instead of 404
         return jsonify({"error": "Unauthorized: Actor not found for this role."}), 401
-    # --- END OF FIX ---
 
     data = request.get_json()
     required_fields = ['title', 'lead_id']
@@ -87,37 +101,18 @@ def create_task():
     if not lead:
         return jsonify({"error": "Associated lead not found."}), 404
 
-    # --- FIX: Handle task creator ID based on role ---
-    # The 'created_by_staff_id' column requires a Staff ID. 
-    # If a SuperAdmin creates a task, we can't fill this.
-    # We will find a default staff member (e.g., the first one) to associate it with.
-    # In a real-world app, you might have a dedicated "System" or "Admin" staff account.
-    creator_staff_id = None
-    if claims.get('role') == 'staff':
-        creator_staff_id = actor.id
-    else: # If SuperAdmin, find a fallback staff ID
-        first_staff = Staff.query.first()
-        if first_staff:
-            creator_staff_id = first_staff.id
-        else:
-            return jsonify({"error": "Cannot create task. No staff members exist in the system to assign as creator."}), 400
+    creator_staff_id = actor.id if isinstance(actor, Staff) else Staff.query.first().id
+    if not creator_staff_id:
+        return jsonify({"error": "Cannot create task. No staff members exist in the system."}), 400
 
-    new_task = Task(
-        title=data['title'],
-        note=data.get('note', ''),
-        lead_id=data['lead_id'],
-        created_by_staff_id=creator_staff_id,
-        due_date=due_date
-    )
-    # --- END OF FIX ---
+    new_task = Task(title=data['title'], note=data.get('note', ''), lead_id=data['lead_id'], created_by_staff_id=creator_staff_id, due_date=due_date)
     
     recipients = set()
     for dept_id in assigned_department_ids:
         dept = Department.query.get(dept_id)
         if dept:
             new_task.assigned_departments.append(dept)
-            for member in dept.staff_members:
-                recipients.add(member)
+            recipients.update(dept.staff_members)
 
     for staff_id in assigned_staff_ids:
         staff = Staff.query.get(staff_id)
@@ -126,51 +121,85 @@ def create_task():
             recipients.add(staff)
 
     db.session.add(new_task)
-    
     log_activity(actor, f"Created a new task: '{new_task.title}'", lead)
     
     student_name = f"{lead.students[0].first_name} {lead.students[0].last_name}"
     message = f"{actor.name} assigned you a new task: '{new_task.title}' for the lead {student_name}."
     
-    final_recipients = [r for r in recipients] # Don't filter out the actor
-    if final_recipients:
-         create_notifications_and_send_emails(final_recipients, message, new_task)
+    if recipients:
+         create_notifications_and_send_emails(list(recipients), message, new_task)
 
     db.session.commit()
-
     return jsonify(new_task.to_dict()), 201
+
+
+@task_bp.route('/<int:id>', methods=['PUT'])
+@jwt_required()
+def update_task(id):
+    actor = get_actor_from_jwt()
+    if not actor:
+        return jsonify({"error": "Unauthorized: Actor not found for this role."}), 401
+
+    task = Task.query.get_or_404(id)
+    data = request.get_json()
+
+    task.title = data.get('title', task.title)
+    task.note = data.get('note', task.note)
+    
+    if data.get('due_date'):
+        task.due_date = datetime.fromisoformat(data['due_date'].replace('Z', '+00:00'))
+    else:
+        task.due_date = None
+
+    if 'status' in data:
+        task.status = data['status']
+        if data['status'] == 'Completed':
+            log_activity(actor, f"Completed task: '{task.title}'", task.lead)
+        else:
+            log_activity(actor, f"Updated task '{task.title}' status to '{data['status']}'", task.lead)
+            
+    if 'lead_status' in data:
+        task.lead.status = data['lead_status']
+        log_activity(actor, f"Updated lead status to '{data['lead_status']}' via task '{task.title}'", task.lead)
+
+    if 'assigned_department_ids' in data or 'assigned_staff_ids' in data:
+        task.assigned_departments.clear()
+        task.assigned_staff.clear()
+        new_recipients = set()
+        for dept_id in data.get('assigned_department_ids', []):
+            dept = Department.query.get(dept_id)
+            if dept:
+                task.assigned_departments.append(dept)
+                new_recipients.update(dept.staff_members)
+        for staff_id in data.get('assigned_staff_ids', []):
+            staff = Staff.query.get(staff_id)
+            if staff:
+                task.assigned_staff.append(staff)
+                new_recipients.add(staff)
+        student_name = f"{task.lead.students[0].first_name} {task.lead.students[0].last_name}"
+        message = f"{actor.name} assigned you a task: '{task.title}' for the lead {student_name}."
+        if new_recipients:
+            create_notifications_and_send_emails(list(new_recipients), message, task)
+    
+    db.session.commit()
+    return jsonify(task.to_dict()), 200
 
 
 @task_bp.route('/<int:id>/status', methods=['PUT'])
 @jwt_required()
 def update_task_status(id):
-    # --- THIS IS THE FIX ---
-    # Apply the same role-aware logic here
-    claims = get_jwt()
-    current_user_email = get_jwt_identity()
-    actor = None
-
-    if claims.get('role') == 'superadmin':
-        actor = SuperAdmin.query.filter_by(email=current_user_email).first()
-    elif claims.get('role') == 'staff':
-        actor = Staff.query.filter_by(email=current_user_email).first()
-
+    actor = get_actor_from_jwt()
     if not actor:
         return jsonify({"error": "Unauthorized: Actor not found for this role."}), 401
-    # --- END OF FIX ---
 
     task = Task.query.get_or_404(id)
-    data = request.get_json()
-    new_status = data.get('status')
-
+    new_status = request.json.get('status')
     if not new_status:
         return jsonify({"error": "Status is required"}), 400
 
     task.status = new_status
-    
     if new_status == 'Completed':
         log_activity(actor, f"Completed task: '{task.title}'", task.lead)
 
     db.session.commit()
-    
     return jsonify(task.to_dict()), 200

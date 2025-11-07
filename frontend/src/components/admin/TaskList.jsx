@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Button, Card, Form, Pagination } from "react-bootstrap";
-import { CalendarCheck, PeopleFill } from "react-bootstrap-icons";
+import {
+  Button,
+  Card,
+  Form,
+  Pagination,
+  Tooltip,
+  OverlayTrigger,
+  Badge,
+} from "react-bootstrap";
+import { CalendarCheck, PeopleFill, PencilSquare } from "react-bootstrap-icons";
 import { updateTaskStatus } from "../../services/taskService";
 import { showSuccess, showError } from "../../utils/notificationService";
 
@@ -22,49 +30,44 @@ const formatDueDate = (dateString) => {
   );
 };
 
-const TaskList = ({ tasks, title = "My Tasks" }) => {
+const TaskList = ({ tasks, title = "My Tasks", onEditTask, onTaskUpdated }) => {
   const [taskList, setTaskList] = useState(tasks || []);
-
-  // --- NEW: State for Pagination ---
   const [currentPage, setCurrentPage] = useState(1);
-  const TASKS_PER_PAGE = 5; // You can adjust this number
+  const TASKS_PER_PAGE = 10;
 
   useEffect(() => {
     setTaskList(tasks || []);
-    setCurrentPage(1); // Reset to first page when tasks change
+    setCurrentPage(1);
   }, [tasks]);
 
-  // --- NEW: Sorting Logic ---
-  // Memoize the sorted list to prevent re-sorting on every render
   const sortedTasks = useMemo(() => {
     return [...taskList].sort((a, b) => {
-      // Completed tasks go to the bottom
       if (a.status === "Completed" && b.status !== "Completed") return 1;
       if (a.status !== "Completed" && b.status === "Completed") return -1;
-      // Otherwise, maintain original order (which is newest first from the API)
       return 0;
     });
   }, [taskList]);
 
-  // --- NEW: Pagination Calculations ---
   const indexOfLastTask = currentPage * TASKS_PER_PAGE;
   const indexOfFirstTask = indexOfLastTask - TASKS_PER_PAGE;
   const currentTasks = sortedTasks.slice(indexOfFirstTask, indexOfLastTask);
   const pageCount = Math.ceil(sortedTasks.length / TASKS_PER_PAGE);
 
   const handleCompleteTask = async (taskId) => {
-    const originalTasks = [...taskList];
     try {
-      setTaskList((currentTasks) =>
-        currentTasks.map((t) =>
-          t.id === taskId ? { ...t, status: "Completed" } : t
-        )
-      );
       await updateTaskStatus(taskId, "Completed");
       showSuccess("Task marked as complete!");
+      if (onTaskUpdated) {
+        onTaskUpdated();
+      } else {
+        setTaskList((currentTasks) =>
+          currentTasks.map((t) =>
+            t.id === taskId ? { ...t, status: "Completed" } : t
+          )
+        );
+      }
     } catch (err) {
       showError("Failed to update task. Please try again.");
-      setTaskList(originalTasks);
     }
   };
 
@@ -112,8 +115,10 @@ const TaskList = ({ tasks, title = "My Tasks" }) => {
                 ...task.assigned_department_names,
                 ...task.assigned_staff_names,
               ].filter(Boolean);
-
               const isCompleted = task.status === "Completed";
+              const leadStatusClass = `status-${task.lead_status
+                ?.toLowerCase()
+                .replace(" ", "-")}`;
 
               return (
                 <div
@@ -127,14 +132,22 @@ const TaskList = ({ tasks, title = "My Tasks" }) => {
                     checked={isCompleted}
                     disabled={isCompleted}
                     onChange={() => handleCompleteTask(task.id)}
-                    // --- NEW: Descriptive labels for accessibility and tooltips ---
                     title={
-                      isCompleted ? "Task is complete" : "Mark task as complete"
+                      isCompleted ? "Task is complete" : "Mark as complete"
                     }
                     aria-label={`Mark task "${task.title}" as complete`}
                   />
                   <div className="task-item-main">
-                    <p className="task-title">{task.title}</p>
+                    <p className="task-title d-flex align-items-center">
+                      {task.title}
+                      {task.lead_status && (
+                        <Badge
+                          className={`status-badge ms-2 ${leadStatusClass}`}
+                        >
+                          {task.lead_status}
+                        </Badge>
+                      )}
+                    </p>
                     <div className="task-meta">
                       {formatDueDate(task.due_date)}
                       {assignees.length > 0 && (
@@ -146,6 +159,19 @@ const TaskList = ({ tasks, title = "My Tasks" }) => {
                     </div>
                   </div>
                   <div className="task-item-actions">
+                    {onEditTask && !isCompleted && (
+                      <OverlayTrigger
+                        overlay={<Tooltip>Edit Task & Update Lead</Tooltip>}
+                      >
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => onEditTask(task)}
+                        >
+                          <PencilSquare />
+                        </Button>
+                      </OverlayTrigger>
+                    )}
                     {task.lead_secure_token && (
                       <Button
                         as={Link}

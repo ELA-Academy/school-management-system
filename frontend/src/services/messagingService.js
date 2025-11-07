@@ -1,5 +1,15 @@
 import api from "../utils/api";
 
+export const getUnreadMessagesCount = async () => {
+  try {
+    const response = await api.get("/messaging/conversations/unread-count");
+    return response.data.count;
+  } catch (error) {
+    console.error("Error fetching unread messages count:", error);
+    return 0; // Return 0 on error
+  }
+};
+
 // Fetch all conversations for the current user
 export const getConversations = async () => {
   try {

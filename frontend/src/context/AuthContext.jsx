@@ -11,6 +11,8 @@ import {
   getNotifications,
   markAllAsRead,
 } from "../services/notificationService";
+import { getActiveTasksCount } from "../services/taskService";
+import { getUnreadMessagesCount } from "../services/messagingService";
 
 const AuthContext = createContext(null);
 
@@ -21,30 +23,30 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
-  const unreadCount = notifications.length;
+  const [unreadTasks, setUnreadTasks] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchCounts = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      // Only fetch notifications for staff users
-      if (user && user.role === "staff") {
-        const data = await getNotifications();
-        setNotifications(data);
-      } else {
-        setNotifications([]);
-      }
+      const [notifData, tasksCount, messagesCount] = await Promise.all([
+        user?.role === "staff" ? getNotifications() : Promise.resolve([]),
+        getActiveTasksCount(),
+        getUnreadMessagesCount(),
+      ]);
+      setNotifications(notifData);
+      setUnreadTasks(tasksCount);
+      setUnreadMessages(messagesCount);
     } catch (error) {
-      console.error("Failed to poll notifications.");
+      console.error("Failed to poll for counts and notifications.", error);
     }
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchNotifications();
-    }, 30000);
-
+    fetchCounts(); // Fetch immediately on login
+    const interval = setInterval(fetchCounts, 30000); // Poll every 30 seconds
     return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  }, [fetchCounts]);
 
   const markAllNotificationsAsRead = async () => {
     try {
@@ -61,17 +63,14 @@ export const AuthProvider = ({ children }) => {
       try {
         const decoded = jwtDecode(token);
         if (decoded.exp * 1000 > Date.now()) {
-          // --- THIS IS THE FIX ---
-          // Store the user's database ID in the context.
           setUser({
-            id: decoded.id, // Add this line
+            id: decoded.id,
             email: decoded.sub,
             name: decoded.name,
             role: decoded.role,
             departmentNames: decoded.departmentNames || [],
             dashboardRoutes: decoded.dashboardRoutes || [],
           });
-          // --- END OF FIX ---
           setIsAuthenticated(true);
         } else {
           logout();
@@ -87,12 +86,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     loadUserFromToken();
   }, [loadUserFromToken]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchNotifications();
-    }
-  }, [isAuthenticated, fetchNotifications]);
 
   const loginUser = async (loginFunction, credentials) => {
     const response = await loginFunction(credentials);
@@ -120,6 +113,8 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     setNotifications([]);
+    setUnreadTasks(0);
+    setUnreadMessages(0);
   };
 
   const value = {
@@ -130,8 +125,11 @@ export const AuthProvider = ({ children }) => {
     superAdminLogin,
     logout,
     notifications,
-    unreadCount,
+    unreadCount: notifications.length,
+    unreadTasks,
+    unreadMessages,
     markAllNotificationsAsRead,
+    refreshCounts: fetchCounts, // Expose a manual refresh function
   };
 
   return (

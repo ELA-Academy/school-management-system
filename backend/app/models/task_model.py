@@ -20,7 +20,6 @@ class Task(db.Model):
     note = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(50), default='To-Do', nullable=False)
     
-    # --- NEW FIELD ---
     due_date = db.Column(db.DateTime, nullable=True)
     
     lead_id = db.Column(db.Integer, db.ForeignKey('leads.id'), nullable=False)
@@ -28,7 +27,6 @@ class Task(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
     created_by_staff = db.relationship('Staff')
 
     assigned_departments = db.relationship('Department', secondary=task_department_assignments, lazy='subquery',
@@ -43,13 +41,14 @@ class Task(db.Model):
             'title': self.title,
             'note': self.note,
             'status': self.status,
-            # --- FIX: Add 'Z' to specify UTC timezone ---
             'due_date': self.due_date.isoformat() + 'Z' if self.due_date else None,
             'lead_id': self.lead_id,
+            'lead_status': self.lead.status if self.lead else None,
+            'assigned_department_ids': [d.id for d in self.assigned_departments],
             'assigned_department_names': [d.name for d in self.assigned_departments],
+            'assigned_staff_ids': [s.id for s in self.assigned_staff],
             'assigned_staff_names': [s.name for s in self.assigned_staff],
             'created_by_staff_name': self.created_by_staff.name if self.created_by_staff else None,
-            # --- FIX: Add 'Z' to specify UTC timezone ---
             'created_at': self.created_at.isoformat() + 'Z',
             'lead_secure_token': self.lead.secure_token if self.lead else None
         }

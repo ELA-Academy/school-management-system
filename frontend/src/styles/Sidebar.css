@@ -1,0 +1,11 @@
+.sidebar .nav-item {
+  position: relative;
+}
+
+.sidebar-badge {
+  position: absolute;
+  top: 50%;
+  right: 1.25rem;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+}

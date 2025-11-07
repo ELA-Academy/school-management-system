@@ -12,13 +12,16 @@ import {
   ClipboardDataFill,
   GearFill,
   PersonCircle,
-  ChatDotsFill, // Import the new icon
+  ChatDotsFill,
+  PencilSquare,
+  ClipboardCheck,
 } from "react-bootstrap-icons";
-import { Nav } from "react-bootstrap";
+import { Nav, Badge } from "react-bootstrap";
 import { useAuth } from "../../context/AuthContext";
+import "../../styles/Sidebar.css";
 
 const Sidebar = () => {
-  const { user } = useAuth();
+  const { user, unreadTasks, unreadMessages } = useAuth();
 
   const navLinksConfig = {
     superadmin: [
@@ -55,6 +58,11 @@ const Sidebar = () => {
         icon: <Calculator />,
         label: "Accounting Overview",
         end: true,
+      },
+      {
+        path: "/admin/enrollment",
+        icon: <PencilSquare />,
+        label: "Enrollment",
       },
     ],
     "Administration Department": [
@@ -98,7 +106,6 @@ const Sidebar = () => {
           className="logo-img"
         />
       </div>
-
       <div className="sidebar-nav">
         <div className="sidebar-menu-title">Menu</div>
         <Nav className="flex-column">
@@ -114,14 +121,27 @@ const Sidebar = () => {
               <span>{link.label}</span>
             </Nav.Link>
           ))}
-          {/* --- THIS IS THE NEW LINK --- */}
-          {/* This link is visible to all authenticated users (Staff and Superadmin) */}
+          {user?.role === "staff" && (
+            <Nav.Link as={NavLink} to="/admin/tasks" className="nav-item">
+              <ClipboardCheck />
+              <span>My Tasks</span>
+              {unreadTasks > 0 && (
+                <Badge pill bg="danger" className="sidebar-badge">
+                  {unreadTasks}
+                </Badge>
+              )}
+            </Nav.Link>
+          )}
           <Nav.Link as={NavLink} to="/admin/messaging" className="nav-item">
             <ChatDotsFill />
             <span>Messaging</span>
+            {unreadMessages > 0 && (
+              <Badge pill bg="danger" className="sidebar-badge">
+                {unreadMessages}
+              </Badge>
+            )}
           </Nav.Link>
         </Nav>
-
         <div className="sidebar-menu-title">Other</div>
         <Nav className="flex-column">
           <Nav.Link as={NavLink} to="/admin/profile" className="nav-item">
@@ -134,7 +154,6 @@ const Sidebar = () => {
           </Nav.Link>
         </Nav>
       </div>
-
       <div className="sidebar-footer">
         <Nav className="flex-column">
           <Nav.Link as={NavLink} to="/logout" className="nav-item">

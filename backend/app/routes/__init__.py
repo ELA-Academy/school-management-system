@@ -22,8 +22,8 @@ def register_blueprints(app):
     app.register_blueprint(notification_bp, url_prefix="/api/notifications")
     from .messaging_routes import messaging_bp
     app.register_blueprint(messaging_bp, url_prefix="/api/messaging")
-    from .push_routes import push_bp # Add this line
-    app.register_blueprint(push_bp, url_prefix="/api/push") # Add this line
+    from .push_routes import push_bp
+    app.register_blueprint(push_bp, url_prefix="/api/push")
     
     # Departmental blueprints
     from .admissions_routes import admissions_bp
@@ -36,3 +36,5 @@ def register_blueprints(app):
     app.register_blueprint(administration_bp, url_prefix="/api/administration")
     from .profile_routes import profile_bp
     app.register_blueprint(profile_bp, url_prefix="/api/profile")
+    from .enrollment_routes import enrollment_bp
+    app.register_blueprint(enrollment_bp, url_prefix="/api/enrollment")
