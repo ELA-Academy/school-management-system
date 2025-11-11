@@ -9,7 +9,6 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "./context/AuthContext";
 
-// --- Import All Components ---
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import SuperAdminSetup from "./pages/SuperAdminSetup";
@@ -34,7 +33,13 @@ import MessagingPage from "./pages/admin/MessagingPage";
 import EnrollmentDashboard from "./pages/admin/enrollment/EnrollmentDashboard";
 import EnrollmentFormBuilder from "./pages/admin/enrollment/EnrollmentFormBuilder";
 import PublicEnrollmentForm from "./pages/public/PublicEnrollmentForm";
-import AllTasksPage from "./pages/admin/AllTasksPage"; // Import new page
+import AllTasksPage from "./pages/admin/AllTasksPage";
+import BillingDashboard from "./pages/admin/billing/BillingDashboard";
+import StudentLedgerPage from "./pages/admin/billing/StudentLedgerPage";
+import AllStudentsPage from "./pages/admin/students/AllStudentsPage";
+import StudentProfilePage from "./pages/admin/students/StudentProfilePage";
+import RecurringPlansPage from "./pages/admin/billing/RecurringPlansPage";
+import SubsidyAccountsPage from "./pages/admin/billing/SubsidyAccountsPage";
 
 function App() {
   return (
@@ -53,7 +58,6 @@ function App() {
       />
       <Router>
         <Routes>
-          {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/superadmin" element={<SuperAdminSetup />} />
@@ -61,7 +65,6 @@ function App() {
           <Route path="/admissions/apply" element={<AdmissionForm />} />
           <Route path="/enrollment/:token" element={<PublicEnrollmentForm />} />
 
-          {/* Admin Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
@@ -71,6 +74,11 @@ function App() {
                 <Route path="staff" element={<ManageStaff />} />
                 <Route path="activity-feed" element={<ActivityFeedPage />} />
               </Route>
+              <Route path="students" element={<AllStudentsPage />} />
+              <Route
+                path="students/:studentId"
+                element={<StudentProfilePage />}
+              />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<ProfilePage />} />
               <Route path="messaging" element={<MessagingPage />} />
@@ -82,6 +90,19 @@ function App() {
                 element={<LeadDetailPage />}
               />
               <Route path="accounting" element={<AccountingDashboard />} />
+              <Route path="billing" element={<BillingDashboard />} />
+              <Route
+                path="billing/accounts/:studentId"
+                element={<StudentLedgerPage />}
+              />
+              <Route
+                path="billing/recurring-plans"
+                element={<RecurringPlansPage />}
+              />
+              <Route
+                path="billing/subsidies"
+                element={<SubsidyAccountsPage />}
+              />
               <Route path="enrollment" element={<EnrollmentDashboard />} />
               <Route
                 path="enrollment/forms/:formId"

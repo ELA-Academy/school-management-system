@@ -38,3 +38,9 @@ def register_blueprints(app):
     app.register_blueprint(profile_bp, url_prefix="/api/profile")
     from .enrollment_routes import enrollment_bp
     app.register_blueprint(enrollment_bp, url_prefix="/api/enrollment")
+    from .student_routes import student_bp
+    app.register_blueprint(student_bp, url_prefix="/api/students")
+    from .billing_routes import billing_bp
+    app.register_blueprint(billing_bp, url_prefix="/api/billing")
+    from .subsidy_routes import subsidy_bp
+    app.register_blueprint(subsidy_bp, url_prefix="/api/subsidies")

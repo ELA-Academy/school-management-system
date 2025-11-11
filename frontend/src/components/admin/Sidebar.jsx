@@ -15,6 +15,10 @@ import {
   ChatDotsFill,
   PencilSquare,
   ClipboardCheck,
+  Bank,
+  MortarboardFill,
+  ArrowRepeat,
+  Award,
 } from "react-bootstrap-icons";
 import { Nav, Badge } from "react-bootstrap";
 import { useAuth } from "../../context/AuthContext";
@@ -23,6 +27,7 @@ import "../../styles/Sidebar.css";
 const Sidebar = () => {
   const { user, unreadTasks, unreadMessages } = useAuth();
 
+  // Defines which links are shown for each department
   const navLinksConfig = {
     superadmin: [
       {
@@ -59,6 +64,17 @@ const Sidebar = () => {
         label: "Accounting Overview",
         end: true,
       },
+      { path: "/admin/billing", icon: <Bank />, label: "Billing Ledger" },
+      {
+        path: "/admin/billing/recurring-plans",
+        icon: <ArrowRepeat />,
+        label: "Recurring Plans",
+      },
+      {
+        path: "/admin/billing/subsidies",
+        icon: <Award />,
+        label: "Subsidy Accounts",
+      },
       {
         path: "/admin/enrollment",
         icon: <PencilSquare />,
@@ -75,6 +91,7 @@ const Sidebar = () => {
     ],
   };
 
+  // Determines the final list of links based on the user's role and departments
   const getLinksForUser = () => {
     if (user?.role === "superadmin") {
       return navLinksConfig.superadmin;
@@ -106,21 +123,41 @@ const Sidebar = () => {
           className="logo-img"
         />
       </div>
+
       <div className="sidebar-nav">
-        <div className="sidebar-menu-title">Menu</div>
+        {/* My School Section (Visible to all staff/admins) */}
+        <div className="sidebar-menu-title">My School</div>
         <Nav className="flex-column">
-          {linksToShow.map((link) => (
-            <Nav.Link
-              as={NavLink}
-              to={link.path}
-              key={link.path}
-              end={!!link.end}
-              className="nav-item"
-            >
-              {link.icon}
-              <span>{link.label}</span>
-            </Nav.Link>
-          ))}
+          <Nav.Link as={NavLink} to="/admin/students" className="nav-item">
+            <MortarboardFill />
+            <span>Students</span>
+          </Nav.Link>
+        </Nav>
+
+        {/* Department-Specific Links */}
+        {linksToShow.length > 0 && (
+          <>
+            <div className="sidebar-menu-title">Departments</div>
+            <Nav className="flex-column">
+              {linksToShow.map((link) => (
+                <Nav.Link
+                  as={NavLink}
+                  to={link.path}
+                  key={link.path}
+                  end={!!link.end}
+                  className="nav-item"
+                >
+                  {link.icon}
+                  <span>{link.label}</span>
+                </Nav.Link>
+              ))}
+            </Nav>
+          </>
+        )}
+
+        {/* Tools Section (Visible to all staff/admins) */}
+        <div className="sidebar-menu-title">Tools</div>
+        <Nav className="flex-column">
           {user?.role === "staff" && (
             <Nav.Link as={NavLink} to="/admin/tasks" className="nav-item">
               <ClipboardCheck />
@@ -142,6 +179,8 @@ const Sidebar = () => {
             )}
           </Nav.Link>
         </Nav>
+
+        {/* General Settings Section */}
         <div className="sidebar-menu-title">Other</div>
         <Nav className="flex-column">
           <Nav.Link as={NavLink} to="/admin/profile" className="nav-item">
@@ -154,6 +193,7 @@ const Sidebar = () => {
           </Nav.Link>
         </Nav>
       </div>
+
       <div className="sidebar-footer">
         <Nav className="flex-column">
           <Nav.Link as={NavLink} to="/logout" className="nav-item">

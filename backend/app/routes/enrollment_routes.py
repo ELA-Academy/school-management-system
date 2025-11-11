@@ -6,13 +6,38 @@ from app.models.department_model import Department
 from app.models.enrollment_form_model import EnrollmentForm
 from app.models.enrollment_submission_model import EnrollmentSubmission
 from app.models.lead_model import Lead
+from app.models.student_model import Student, Parent
+from app.models.financial_model import StudentFinancialAccount
 from app.models.staff_model import Staff
 from app.models.super_admin_model import SuperAdmin
 from app.models.activity_log_model import log_activity
 from app.utils.notifications import send_email_in_background, create_notifications_and_send_emails
-from datetime import datetime
+from datetime import datetime, date
 
 enrollment_bp = Blueprint('enrollment', __name__)
+
+def _perform_lead_conversion(lead):
+    """Converts a Lead to a permanent Student and Parent, and creates a financial account."""
+    if not lead or Student.query.filter_by(lead_id=lead.id).first():
+        return None # Already converted or invalid lead
+
+    lead_student_info = lead.students[0]
+    lead_parent_info = lead.parents[0]
+
+    parent = Parent.query.filter_by(email=lead_parent_info.email).first()
+    if not parent:
+        parent = Parent(first_name=lead_parent_info.first_name, last_name=lead_parent_info.last_name, email=lead_parent_info.email, phone=lead_parent_info.phone)
+        db.session.add(parent)
+
+    new_student = Student(first_name=lead_student_info.first_name, last_name=lead_student_info.last_name, date_of_birth=lead_student_info.date_of_birth, grade_level=lead_student_info.grade_level, enrollment_date=date.today(), lead_id=lead.id)
+    new_student.parents.append(parent)
+    db.session.add(new_student)
+    
+    financial_account = StudentFinancialAccount(student=new_student)
+    db.session.add(financial_account)
+    
+    lead.status = "Enrolled"
+    return new_student
 
 def _send_enrollment_email(submission):
     """Helper function to send the enrollment email to the parent."""
@@ -71,22 +96,17 @@ def submit_public_form(token):
         submission.payment_status = 'Paid'
         submission.status = 'Completed'
 
-    # --- NOTIFICATION LOGIC ---
+    # --- AUTOMATIC CONVERSION ---
+    _perform_lead_conversion(submission.lead)
+    # --- END AUTOMATIC CONVERSION ---
+
     accounting_dept = Department.query.filter_by(name="Accounting Department").first()
     if accounting_dept and accounting_dept.staff_members:
         message = f"An enrollment form for {student_name} has been submitted."
-        if submission.payment_status == 'Paid':
-            message += " Payment has been confirmed."
-        
-        create_notifications_and_send_emails(
-            recipients=accounting_dept.staff_members,
-            message=message,
-            target_obj=submission.lead # Link notification to the lead detail page
-        )
-    # --- END NOTIFICATION LOGIC ---
+        if submission.payment_status == 'Paid': message += " Payment has been confirmed."
+        create_notifications_and_send_emails(recipients=accounting_dept.staff_members, message=message, target_obj=submission.lead)
     
     log_activity(None, f"Parent submitted enrollment for {student_name}", submission.lead)
-
     db.session.commit()
     return jsonify({"message": "Your submission was successful!"}), 200
 

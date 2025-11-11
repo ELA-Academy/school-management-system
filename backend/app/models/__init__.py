@@ -11,15 +11,19 @@ def init_db(app):
         from app.models.super_admin_model import SuperAdmin
         from app.models.department_model import Department
         from app.models.staff_model import Staff
-        from app.models.lead_model import Lead
+        from app.models.lead_model import Lead, LeadStudent, LeadParent
         from app.models.task_model import Task
-        from app.models.student_model import Student
-        from app.models.parent_model import Parent
+        from app.models.student_model import Student, Parent
         from app.models.activity_log_model import ActivityLog
         from app.models.notification_model import Notification
         from app.models.conversation_model import Conversation, Message, ConversationParticipant
         from app.models.push_subscription_model import PushSubscription
         from app.models.enrollment_form_model import EnrollmentForm
         from app.models.enrollment_submission_model import EnrollmentSubmission
+        from app.models.financial_model import (
+            StudentFinancialAccount, PresetChargeItem, Invoice, 
+            InvoiceItem, Payment, Credit, BillingPlan, Subscription
+        )
+        from app.models.subsidy_model import Subsidy
         
         db.create_all()

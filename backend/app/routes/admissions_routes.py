@@ -1,12 +1,10 @@
 from flask import Blueprint, request, jsonify
 from app.models import db
-from app.models.lead_model import Lead
-from app.models.student_model import Student
-from app.models.parent_model import Parent
+from app.models.lead_model import Lead, LeadStudent, LeadParent
 from app.models.staff_model import Staff
-from app.models.department_model import Department # Import Department
+from app.models.department_model import Department
 from app.models.activity_log_model import log_activity
-from app.utils.notifications import create_notifications_and_send_emails # Import notification helper
+from app.utils.notifications import create_notifications_and_send_emails
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 
@@ -27,7 +25,7 @@ def create_lead():
     db.session.flush()
 
     for student_info in students_data:
-        new_student = Student(
+        new_student = LeadStudent(
             first_name=student_info['first_name'],
             last_name=student_info['last_name'],
             date_of_birth=datetime.strptime(student_info['date_of_birth'], '%Y-%m-%d').date(),
@@ -37,7 +35,7 @@ def create_lead():
         )
         db.session.add(new_student)
     for parent_info in parents_data:
-        new_parent = Parent(
+        new_parent = LeadParent(
             first_name=parent_info['first_name'],
             last_name=parent_info['last_name'],
             email=parent_info['email'],
@@ -48,7 +46,6 @@ def create_lead():
 
     log_activity(None, "Submitted a new admission application", new_lead)
 
-    # --- TRIGGER NOTIFICATION ---
     admissions_dept = Department.query.filter_by(name="Admission Department").first()
     if admissions_dept and admissions_dept.staff_members:
         student_name = f"{students_data[0]['first_name']} {students_data[0]['last_name']}"
@@ -58,9 +55,9 @@ def create_lead():
             message=message,
             target_obj=new_lead
         )
-    # --- END NOTIFICATION ---
 
     db.session.commit()
+    # The to_dict() method on Lead will handle the new model names, no change needed here
     return jsonify(new_lead.to_dict()), 201
 
 @admissions_bp.route('/leads', methods=['GET'])
@@ -88,7 +85,7 @@ def update_lead_details(token):
 
     students_data = data.get('students', [])
     for s_data in students_data:
-        student = Student.query.get(s_data['id'])
+        student = LeadStudent.query.get(s_data['id'])
         if student and student.lead_id == lead.id:
             student.first_name = s_data['first_name']
             student.last_name = s_data['last_name']
@@ -99,7 +96,7 @@ def update_lead_details(token):
 
     parents_data = data.get('parents', [])
     for p_data in parents_data:
-        parent = Parent.query.get(p_data['id'])
+        parent = LeadParent.query.get(p_data['id'])
         if parent and parent.lead_id == lead.id:
             parent.first_name = p_data['first_name']
             parent.last_name = p_data['last_name']

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Dropdown } from "react-bootstrap";
-import { ThreeDotsVertical } from "react-bootstrap-icons";
-import { getAllLeads } from "../../../services/admissionsService";
+import { Dropdown, Button } from "react-bootstrap";
+import { ThreeDotsVertical, PersonCheckFill } from "react-bootstrap-icons";
+import {
+  getAllLeads,
+  convertLeadToStudent,
+} from "../../../services/admissionsService";
+import { showSuccess, showError } from "../../../utils/notificationService";
 import PageHeader from "../../../components/admin/PageHeader";
 import "../../../styles/AdminModern.css";
 
-// --- THIS IS THE FIX (Part 1) ---
-// Create a custom toggle component for the dropdown
 const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
   <a
     href=""
@@ -27,19 +29,37 @@ const LeadsListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const data = await getAllLeads();
+      setLeads(data);
+    } catch (err) {
+      setError("Failed to fetch leads.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        const data = await getAllLeads();
-        setLeads(data);
-      } catch (err) {
-        setError("Failed to fetch leads.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchLeads();
   }, []);
+
+  const handlePromote = async (leadId) => {
+    if (
+      window.confirm(
+        "Are you sure you want to promote this lead to a permanent student record? This is the final step before billing can begin."
+      )
+    ) {
+      try {
+        await convertLeadToStudent(leadId);
+        showSuccess("Lead successfully promoted to student!");
+        fetchLeads(); // Refresh list to show updated status
+      } catch (err) {
+        showError(err.response?.data?.error || "Failed to promote lead.");
+      }
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -69,9 +89,7 @@ const LeadsListPage = () => {
               <th>Created Date</th>
               <th>Student Name(s)</th>
               <th>Parent(s)</th>
-              <th>Amount</th>
               <th>Status</th>
-              <th>Expected Start</th>
               <th></th>
             </tr>
           </thead>
@@ -96,17 +114,6 @@ const LeadsListPage = () => {
                       .join(", ")}
                   </td>
                   <td>
-                    <span className="fw-bold">
-                      {lead.payment_status || "Unpaid"}
-                    </span>
-                    {(!lead.payment_status ||
-                      lead.payment_status === "Unpaid") && (
-                      <a href="#" className="d-block text-success small">
-                        Pay Now
-                      </a>
-                    )}
-                  </td>
-                  <td>
                     <span
                       className={`status-badge status-${lead.status
                         .toLowerCase()
@@ -115,10 +122,7 @@ const LeadsListPage = () => {
                       {lead.status}
                     </span>
                   </td>
-                  <td>{lead.expected_start_date || "-"}</td>
                   <td className="text-center">
-                    {/* --- THIS IS THE FIX (Part 2) --- */}
-                    {/* Use the CustomToggle in the Dropdown */}
                     <Dropdown align="end">
                       <Dropdown.Toggle as={CustomToggle}>
                         <ThreeDotsVertical size={20} />
@@ -130,9 +134,12 @@ const LeadsListPage = () => {
                         >
                           View Details
                         </Dropdown.Item>
-                        <Dropdown.Item href="#">
-                          Send Follow-up Email
-                        </Dropdown.Item>
+                        {lead.status !== "Enrolled" && (
+                          <Dropdown.Item onClick={() => handlePromote(lead.id)}>
+                            <PersonCheckFill className="me-2" /> Promote to
+                            Student
+                          </Dropdown.Item>
+                        )}
                         <Dropdown.Divider />
                         <Dropdown.Item href="#" className="text-danger">
                           Archive Lead
@@ -144,7 +151,7 @@ const LeadsListPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="text-center py-5">
+                <td colSpan="5" className="text-center py-5">
                   No leads found.
                 </td>
               </tr>

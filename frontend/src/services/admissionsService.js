@@ -1,5 +1,15 @@
 import api from "../utils/api";
 
+export const convertLeadToStudent = async (leadId) => {
+  try {
+    const response = await api.post(`/students/from-lead/${leadId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error converting lead ${leadId} to student:`, error);
+    throw error;
+  }
+};
+
 export const createLead = async (leadData) => {
   try {
     const response = await api.post("/admissions/leads", leadData);
@@ -52,7 +62,6 @@ export const updateLead = async (token, updateData) => {
   }
 };
 
-// --- NEW FUNCTION ---
 export const updateLeadDetails = async (token, detailsData) => {
   try {
     const response = await api.put(
