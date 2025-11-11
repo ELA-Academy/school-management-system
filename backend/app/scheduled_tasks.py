@@ -75,10 +75,8 @@ def generate_invoices_command():
             print(f"  - Invoice email queued for {parent.email}")
 
 
-        # --- Update the subscription for the next cycle ---
         if sub.cycle == 'Monthly':
             sub.next_invoice_date += relativedelta(months=1)
-        # Add other cycles like 'Weekly', 'Annually' here in the future
         
         print(f"  - Invoice created. Next invoice date set to: {sub.next_invoice_date.isoformat()}")
 
