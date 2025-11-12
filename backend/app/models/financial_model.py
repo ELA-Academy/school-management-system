@@ -38,7 +38,6 @@ class Invoice(db.Model):
     
     @property
     def total_amount(self):
-        # Convert amount to float before summing to avoid type errors
         return sum(float(item.amount or 0) for item in self.items)
 
     def to_dict(self):
@@ -109,10 +108,14 @@ class Subscription(db.Model):
     items_json = db.Column(db.JSON, nullable=False)
 
     def to_dict(self):
+        student_name = "N/A (Student Not Found)"
+        if self.account and self.account.student:
+            student_name = f"{self.account.student.first_name} {self.account.student.last_name}"
+
         return {
             'id': self.id,
             'account_id': self.account_id,
-            'student_name': f"{self.account.student.first_name} {self.account.student.last_name}",
+            'student_name': student_name,
             'plan_name': self.plan_name,
             'status': self.status,
             'cycle': self.cycle,

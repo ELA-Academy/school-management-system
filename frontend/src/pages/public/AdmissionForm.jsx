@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { createLead } from "../../services/admissionsService";
 import { useNavigate } from "react-router-dom";
+import PublicLayout from "../../components/PublicLayout";
 import "../../styles/MultiStepForm.css";
 
 // Constants for Grade Levels
@@ -54,7 +55,7 @@ const AdmissionForm = () => {
       setTimeout(() => navigate("/"), 5000);
     } catch (err) {
       setError("Failed to submit application. Please review your information.");
-      setStep(5); // Go back to review step on error
+      setStep(5);
     } finally {
       setIsLoading(false);
     }
@@ -62,45 +63,49 @@ const AdmissionForm = () => {
 
   if (success) {
     return (
-      <div className="form-page-container">
-        <div
-          className="multistep-form"
-          style={{ textAlign: "center", padding: "50px" }}
-        >
-          <h2>Thank You!</h2>
-          <p>{success}</p>
+      <PublicLayout>
+        <div className="form-page-container">
+          <div
+            className="multistep-form"
+            style={{ textAlign: "center", padding: "50px" }}
+          >
+            <h2>Thank You!</h2>
+            <p>{success}</p>
+          </div>
         </div>
-      </div>
+      </PublicLayout>
     );
   }
 
   return (
-    <div className="form-page-container">
-      <div className="multistep-form">
-        <Stepper currentStep={step} />
-        <div className="form-step-content">
-          {step === 1 && (
-            <StudentInfoStep formData={formData} setFormData={setFormData} />
-          )}
-          {step === 2 && (
-            <ParentInfoStep formData={formData} setFormData={setFormData} />
-          )}
-          {step === 3 && <PickupInfoStep />}
-          {step === 4 && (
-            <PolicyStep formData={formData} setFormData={setFormData} />
-          )}
-          {step === 5 && <ReviewStep formData={formData} error={error} />}
+    <PublicLayout>
+      <div className="form-page-container">
+        <div className="multistep-form">
+          <Stepper currentStep={step} />
+          <div className="form-step-content">
+            {step === 1 && (
+              <StudentInfoStep formData={formData} setFormData={setFormData} />
+            )}
+            {step === 2 && (
+              <ParentInfoStep formData={formData} setFormData={setFormData} />
+            )}
+            {step === 3 && <PickupInfoStep />}
+            {step === 4 && (
+              <PolicyStep formData={formData} setFormData={setFormData} />
+            )}
+            {step === 5 && <ReviewStep formData={formData} error={error} />}
+          </div>
+          <NavigationButtons
+            step={step}
+            handleBack={handleBack}
+            handleNext={handleNext}
+            handleSubmit={handleSubmit}
+            isLoading={isLoading}
+            isStepValid={isStepValid(step, formData)}
+          />
         </div>
-        <NavigationButtons
-          step={step}
-          handleBack={handleBack}
-          handleNext={handleNext}
-          handleSubmit={handleSubmit}
-          isLoading={isLoading}
-          isStepValid={isStepValid(step, formData)}
-        />
       </div>
-    </div>
+    </PublicLayout>
   );
 };
 
@@ -116,7 +121,7 @@ const Stepper = ({ currentStep }) => (
         }`}
       >
         <div className="step-number">
-          {currentStep > index + 1 ? "" : index + 1}
+          {currentStep > index + 1 ? "✓" : index + 1}
         </div>
         <div className="step-label">{label} Info</div>
       </div>
@@ -365,7 +370,7 @@ const PolicyStep = ({ formData, setFormData }) => (
 const ReviewStep = ({ formData, error }) => (
   <div>
     <h2>Review Your Information</h2>
-    {error && <p style={{ color: "red" }}>{error}</p>}
+    {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
     {formData.students.map((student, index) => (
       <div key={index} className="review-section">
         <h3>Student #{index + 1}</h3>

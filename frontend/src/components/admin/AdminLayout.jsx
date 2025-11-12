@@ -12,15 +12,12 @@ const AdminLayout = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Subscribe user to push notifications once they are authenticated.
-    // This will run once per login session.
     if (isAuthenticated) {
       subscribeUser();
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    // Handles initial redirect logic
     if (
       user &&
       (location.pathname === "/admin" || location.pathname === "/admin/")
@@ -37,12 +34,16 @@ const AdminLayout = () => {
     }
   }, [user, navigate, location.pathname]);
 
+  const isMessagingPage = location.pathname.startsWith("/admin/messaging");
+
   return (
     <div className="admin-layout">
       <Sidebar />
       <div className="main-content">
         <Header />
-        <main className="content-area">
+        <main
+          className={isMessagingPage ? "content-area-full" : "content-area"}
+        >
           <Outlet />
         </main>
       </div>

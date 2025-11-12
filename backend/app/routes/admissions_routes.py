@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.models import db
 from app.models.lead_model import Lead, LeadStudent, LeadParent
+from app.models.student_model import Student, Parent # Import permanent models
 from app.models.staff_model import Staff
 from app.models.department_model import Department
 from app.models.activity_log_model import log_activity
@@ -57,7 +58,6 @@ def create_lead():
         )
 
     db.session.commit()
-    # The to_dict() method on Lead will handle the new model names, no change needed here
     return jsonify(new_lead.to_dict()), 201
 
 @admissions_bp.route('/leads', methods=['GET'])
@@ -83,25 +83,49 @@ def update_lead_details(token):
     lead = Lead.query.filter_by(secure_token=token).first_or_404()
     data = request.get_json()
 
+    # --- THIS IS THE NEW SYNC LOGIC ---
+    # Find the permanent student record, if it exists
+    permanent_student = Student.query.filter_by(lead_id=lead.id).first()
+    # --- END OF NEW LOGIC ---
+
     students_data = data.get('students', [])
     for s_data in students_data:
-        student = LeadStudent.query.get(s_data['id'])
-        if student and student.lead_id == lead.id:
-            student.first_name = s_data['first_name']
-            student.last_name = s_data['last_name']
+        lead_student = LeadStudent.query.get(s_data['id'])
+        if lead_student and lead_student.lead_id == lead.id:
+            lead_student.first_name = s_data['first_name']
+            lead_student.last_name = s_data['last_name']
             dob_str = s_data['date_of_birth'].split('T')[0]
-            student.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
-            student.city_state = s_data['city_state']
-            student.grade_level = s_data['grade_level']
+            lead_student.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
+            # city_state is not on the permanent student model, so we don't sync it
+            lead_student.grade_level = s_data['grade_level']
+
+            # --- SYNC ACTION ---
+            if permanent_student:
+                permanent_student.first_name = s_data['first_name']
+                permanent_student.last_name = s_data['last_name']
+                permanent_student.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
+                permanent_student.grade_level = s_data['grade_level']
+            # --- END SYNC ACTION ---
 
     parents_data = data.get('parents', [])
     for p_data in parents_data:
-        parent = LeadParent.query.get(p_data['id'])
-        if parent and parent.lead_id == lead.id:
-            parent.first_name = p_data['first_name']
-            parent.last_name = p_data['last_name']
-            parent.email = p_data['email']
-            parent.phone = p_data['phone']
+        lead_parent = LeadParent.query.get(p_data['id'])
+        if lead_parent and lead_parent.lead_id == lead.id:
+            lead_parent.first_name = p_data['first_name']
+            lead_parent.last_name = p_data['last_name']
+            lead_parent.email = p_data['email']
+            lead_parent.phone = p_data['phone']
+            
+            # --- SYNC ACTION ---
+            # Find and update the permanent parent record
+            if permanent_student and permanent_student.parents:
+                permanent_parent = permanent_student.parents[0] # Assuming one parent for simplicity
+                if permanent_parent:
+                    permanent_parent.first_name = p_data['first_name']
+                    permanent_parent.last_name = p_data['last_name']
+                    permanent_parent.email = p_data['email']
+                    permanent_parent.phone = p_data['phone']
+            # --- END SYNC ACTION ---
     
     log_activity(actor, "Updated lead details (student/parent info)", lead)
 

@@ -65,17 +65,28 @@ def _send_enrollment_email(submission):
 
 @enrollment_bp.route('/public/submission/<string:token>', methods=['GET'])
 def get_public_submission(token):
+    """Fetches a submission, its form structure, and pre-population data."""
     submission = EnrollmentSubmission.query.filter_by(secure_token=token).first_or_404()
+    
     if submission.form.status != 'Active':
         return jsonify({"error": "This enrollment form is not currently active."}), 403
+
     if submission.status in ['Submitted', 'Completed']:
          return jsonify({"error": "This form has already been submitted."}), 403
+
+    # --- Prepopulate LOGIC ---
+    prefill_data = {
+        "students": [s.to_dict() for s in submission.lead.students],
+        "parents": [p.to_dict() for p in submission.lead.parents]
+    }
+
     return jsonify({
         "submission_id": submission.id,
         "form_structure": submission.form.form_structure_json,
         "fee_required": submission.form.collect_fee,
         "fee_amount": submission.form.fee_amount,
-        "student_name": f"{submission.lead.students[0].first_name} {submission.lead.students[0].last_name}" if submission.lead.students else "N/A"
+        "student_name": f"{submission.lead.students[0].first_name} {submission.lead.students[0].last_name}" if submission.lead.students else "N/A",
+        "prefill_data": prefill_data # Add the data to the response
     }), 200
 
 @enrollment_bp.route('/public/submission/<string:token>', methods=['POST'])

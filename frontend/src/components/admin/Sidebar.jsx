@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   HouseDoorFill,
@@ -19,6 +19,7 @@ import {
   MortarboardFill,
   ArrowRepeat,
   Award,
+  ChevronRight,
 } from "react-bootstrap-icons";
 import { Nav, Badge } from "react-bootstrap";
 import { useAuth } from "../../context/AuthContext";
@@ -26,8 +27,29 @@ import "../../styles/Sidebar.css";
 
 const Sidebar = () => {
   const { user, unreadTasks, unreadMessages } = useAuth();
+  const [openSections, setOpenSections] = useState({
+    mySchool: true,
+    departments: true,
+    tools: true,
+    other: false,
+  });
 
-  // Defines which links are shown for each department
+  const toggleSection = (section) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const NavItem = ({ to, icon, label, badgeCount, end = false }) => (
+    <Nav.Link as={NavLink} to={to} end={end} className="nav-item">
+      {icon}
+      <span>{label}</span>
+      {badgeCount > 0 && (
+        <Badge pill bg="danger" className="sidebar-badge">
+          {badgeCount}
+        </Badge>
+      )}
+    </Nav.Link>
+  );
+
   const navLinksConfig = {
     superadmin: [
       {
@@ -91,20 +113,14 @@ const Sidebar = () => {
     ],
   };
 
-  // Determines the final list of links based on the user's role and departments
   const getLinksForUser = () => {
-    if (user?.role === "superadmin") {
-      return navLinksConfig.superadmin;
-    }
-
+    if (user?.role === "superadmin") return navLinksConfig.superadmin;
     if (user?.role === "staff" && user.departmentNames) {
       const combinedLinks = new Map();
       user.departmentNames.forEach((deptName) => {
         const linksForDept = navLinksConfig[deptName] || [];
         linksForDept.forEach((link) => {
-          if (!combinedLinks.has(link.path)) {
-            combinedLinks.set(link.path, link);
-          }
+          if (!combinedLinks.has(link.path)) combinedLinks.set(link.path, link);
         });
       });
       return Array.from(combinedLinks.values());
@@ -112,7 +128,7 @@ const Sidebar = () => {
     return [];
   };
 
-  const linksToShow = getLinksForUser();
+  const departmentLinks = getLinksForUser();
 
   return (
     <div className="sidebar">
@@ -125,82 +141,107 @@ const Sidebar = () => {
       </div>
 
       <div className="sidebar-nav">
-        {/* My School Section (Visible to all staff/admins) */}
-        <div className="sidebar-menu-title">My School</div>
-        <Nav className="flex-column">
-          <Nav.Link as={NavLink} to="/admin/students" className="nav-item">
-            <MortarboardFill />
-            <span>Students</span>
-          </Nav.Link>
+        {/* My School Section */}
+        <div
+          className="sidebar-menu-toggle"
+          onClick={() => toggleSection("mySchool")}
+          aria-expanded={openSections.mySchool}
+        >
+          My School <ChevronRight className="toggle-icon" />
+        </div>
+        <Nav
+          className={`flex-column sidebar-submenu ${
+            openSections.mySchool ? "show" : ""
+          }`}
+        >
+          <NavItem
+            to="/admin/students"
+            icon={<MortarboardFill />}
+            label="Students"
+          />
         </Nav>
 
         {/* Department-Specific Links */}
-        {linksToShow.length > 0 && (
+        {departmentLinks.length > 0 && (
           <>
-            <div className="sidebar-menu-title">Departments</div>
-            <Nav className="flex-column">
-              {linksToShow.map((link) => (
-                <Nav.Link
-                  as={NavLink}
+            <div
+              className="sidebar-menu-toggle"
+              onClick={() => toggleSection("departments")}
+              aria-expanded={openSections.departments}
+            >
+              Departments <ChevronRight className="toggle-icon" />
+            </div>
+            <Nav
+              className={`flex-column sidebar-submenu ${
+                openSections.departments ? "show" : ""
+              }`}
+            >
+              {departmentLinks.map((link) => (
+                <NavItem
                   to={link.path}
                   key={link.path}
+                  icon={link.icon}
+                  label={link.label}
                   end={!!link.end}
-                  className="nav-item"
-                >
-                  {link.icon}
-                  <span>{link.label}</span>
-                </Nav.Link>
+                />
               ))}
             </Nav>
           </>
         )}
 
-        {/* Tools Section (Visible to all staff/admins) */}
-        <div className="sidebar-menu-title">Tools</div>
-        <Nav className="flex-column">
+        {/* Tools Section */}
+        <div
+          className="sidebar-menu-toggle"
+          onClick={() => toggleSection("tools")}
+          aria-expanded={openSections.tools}
+        >
+          Tools <ChevronRight className="toggle-icon" />
+        </div>
+        <Nav
+          className={`flex-column sidebar-submenu ${
+            openSections.tools ? "show" : ""
+          }`}
+        >
           {user?.role === "staff" && (
-            <Nav.Link as={NavLink} to="/admin/tasks" className="nav-item">
-              <ClipboardCheck />
-              <span>My Tasks</span>
-              {unreadTasks > 0 && (
-                <Badge pill bg="danger" className="sidebar-badge">
-                  {unreadTasks}
-                </Badge>
-              )}
-            </Nav.Link>
+            <NavItem
+              to="/admin/tasks"
+              icon={<ClipboardCheck />}
+              label="My Tasks"
+              badgeCount={unreadTasks}
+            />
           )}
-          <Nav.Link as={NavLink} to="/admin/messaging" className="nav-item">
-            <ChatDotsFill />
-            <span>Messaging</span>
-            {unreadMessages > 0 && (
-              <Badge pill bg="danger" className="sidebar-badge">
-                {unreadMessages}
-              </Badge>
-            )}
-          </Nav.Link>
+          <NavItem
+            to="/admin/messaging"
+            icon={<ChatDotsFill />}
+            label="Messaging"
+            badgeCount={unreadMessages}
+          />
         </Nav>
 
         {/* General Settings Section */}
-        <div className="sidebar-menu-title">Other</div>
-        <Nav className="flex-column">
-          <Nav.Link as={NavLink} to="/admin/profile" className="nav-item">
-            <PersonCircle />
-            <span>Profile</span>
-          </Nav.Link>
-          <Nav.Link as={NavLink} to="/admin/settings" className="nav-item">
-            <GearFill />
-            <span>Settings</span>
-          </Nav.Link>
+        <div
+          className="sidebar-menu-toggle"
+          onClick={() => toggleSection("other")}
+          aria-expanded={openSections.other}
+        >
+          Other <ChevronRight className="toggle-icon" />
+        </div>
+        <Nav
+          className={`flex-column sidebar-submenu ${
+            openSections.other ? "show" : ""
+          }`}
+        >
+          <NavItem
+            to="/admin/profile"
+            icon={<PersonCircle />}
+            label="Profile"
+          />
+          <NavItem to="/admin/settings" icon={<GearFill />} label="Settings" />
         </Nav>
       </div>
 
       <div className="sidebar-footer">
-        <Nav className="flex-column">
-          <Nav.Link as={NavLink} to="/logout" className="nav-item">
-            <BoxArrowLeft />
-            <span>Logout</span>
-          </Nav.Link>
-        </Nav>
+        <NavItem to="/logout" icon={<BoxArrowLeft />} label="Logout" />
       </div>
     </div>
   );

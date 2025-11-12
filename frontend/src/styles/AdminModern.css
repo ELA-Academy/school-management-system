@@ -71,17 +71,19 @@ body {
   transition: width 0.3s ease;
 }
 
-/* --- THIS IS THE FIX --- */
+.sidebar-collapsed .sidebar {
+  width: 80px; /* New, smaller width */
+}
+
 .sidebar-header {
   padding: 1rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 70px; /* Match header height */
-  background-color: #111827; /* Dark background to make logo visible */
+  height: 70px;
+  background-color: #111827;
   border-bottom: 1px solid var(--border-color);
 }
-/* --- END OF FIX --- */
 
 .sidebar-header .logo-img {
   max-height: 45px;
@@ -138,6 +140,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  transition: margin-left 0.3s ease;
 }
 
 /* === Header === */
@@ -201,6 +204,12 @@ body {
 .content-area {
   padding: 2rem;
   flex-grow: 1;
+}
+
+.content-area-full {
+  flex-grow: 1;
+  overflow: hidden;
+  height: calc(100vh - 70px);
 }
 
 .page-header {
@@ -1054,14 +1063,10 @@ body {
   overflow-y: auto;
   padding: 0.5rem;
 
-  /* --- THIS IS THE FIX --- */
-  /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
   &::-webkit-scrollbar {
     display: none;
   }
-  /* Hide scrollbar for Firefox */
   scrollbar-width: none;
-  /* Hide scrollbar for IE, Edge */
   -ms-overflow-style: none;
 }
 

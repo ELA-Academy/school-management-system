@@ -1,65 +1,65 @@
-/* Main Messaging Layout */
-.messaging-layout,
-.messaging-layout .row,
-.messaging-layout .col-md-4,
-.messaging-layout .col-md-8 {
-  padding: 0;
-  margin: 0;
+/* === NEW MESSAGING LAYOUT & SCROLLING FIX === */
+.messaging-layout {
+  display: flex;
+  height: calc(100vh - 70px); /* Full viewport height minus header */
+  width: 100%;
+  overflow: hidden; /* Prevent the whole page from scrolling */
 }
 
-.messaging-layout .row {
-  --bs-gutter-x: 0;
-}
-
-.conversation-sidebar .card,
-.chat-window-area .card {
-  border-radius: 0;
-  border: none;
+.conversation-sidebar {
+  width: 320px;
+  flex-shrink: 0;
   border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
 }
-.chat-window-area .card {
-  border-right: none;
-}
+
 .conversation-sidebar .card-header {
-  border-radius: 0;
-  background-color: var(--card-bg);
+  flex-shrink: 0;
+  /* === THIS IS THE FIX: Better alignment and styling === */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  /* === END OF FIX === */
 }
+
+/* === THIS IS THE FIX: Style the plus button === */
+.new-conversation-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+.new-conversation-btn:hover {
+  background-color: var(--primary-light);
+}
+/* === END OF FIX === */
 
 .conversation-list {
-  overflow-y: auto;
-  height: calc(100% - 57px);
+  flex-grow: 1; /* Allow this section to fill the space */
+  overflow-y: auto; /* Make ONLY this section scrollable */
 }
 
-.conversation-details {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.last-message-preview {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.conversation-list .list-group-item .timestamp {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-bottom: 0.25rem;
-}
-
-.conversation-list .list-group-item.active {
-  background-color: var(--primary-light);
-  border-right: 3px solid var(--primary-color);
-}
-.conversation-list .list-group-item.active .fw-bold {
-  color: var(--primary-text);
-}
-
-/* Scrollbar Fix */
-.chat-window-area .card-body {
+.chat-window-area {
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.chat-header {
+  flex-shrink: 0;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+}
+
+.chat-header h5 {
+  margin: 0;
 }
 
 .chat-messages {
@@ -75,20 +75,53 @@
   border-top: 1px solid var(--border-color);
   background-color: var(--card-bg);
 }
-/* End Scrollbar Fix */
 
+.chat-input-area .form-control {
+  border-radius: 1.5rem; /* Pill shape */
+  padding: 0.5rem 1rem;
+  border-right: none;
+  resize: none; /* Disable manual resize */
+  max-height: 150px; /* Prevent it from growing infinitely */
+  overflow-y: auto; /* Add scroll if it gets too long */
+}
+
+.chat-input-area .btn {
+  border-radius: 50% !important; /* Circular button */
+}
+/* === END OF NEW LAYOUT === */
+
+/* --- Bubble styles (from before) --- */
+.conversation-details {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.last-message-preview {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.conversation-list .list-group-item .timestamp {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.conversation-list .list-group-item.active {
+  background-color: var(--primary-light);
+  border-right: 3px solid var(--primary-color);
+}
+.conversation-list .list-group-item.active .fw-bold {
+  color: var(--primary-text);
+}
 .message-bubble {
   display: flex;
   margin-bottom: 1rem;
   max-width: 75%;
 }
-
 .message-bubble .message-content {
   padding: 0.75rem 1rem;
   border-radius: 1rem;
   line-height: 1.4;
 }
-
 .message-bubble .message-content p {
   margin: 0;
 }
@@ -98,7 +131,6 @@
   margin-top: 0.25rem;
   color: var(--text-muted);
 }
-
 .message-bubble.sent {
   margin-left: auto;
   justify-content: flex-end;
@@ -111,7 +143,6 @@
 .message-bubble.sent .message-content .timestamp {
   color: rgba(255, 255, 255, 0.7);
 }
-
 .message-bubble.received {
   margin-right: auto;
   justify-content: flex-start;
@@ -128,18 +159,10 @@
   margin-bottom: 0.25rem;
   color: var(--primary-text);
 }
-
-.chat-input-area .form-control {
-  border-right: none;
+.message-bubble.sending .message-content {
+  opacity: 0.7;
 }
-
-.chat-input-area .form-control:focus {
-  z-index: 1;
-  box-shadow: none;
-  border-color: var(--bs-border-color);
-}
-
-.chat-input-area .btn {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+.message-bubble.sending .timestamp::before {
+  content: "Sending...";
+  margin-right: 5px;
 }
