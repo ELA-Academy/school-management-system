@@ -40,6 +40,7 @@ import AllStudentsPage from "./pages/admin/students/AllStudentsPage";
 import StudentProfilePage from "./pages/admin/students/StudentProfilePage";
 import RecurringPlansPage from "./pages/admin/billing/RecurringPlansPage";
 import SubsidyAccountsPage from "./pages/admin/billing/SubsidyAccountsPage";
+import MessageLogPage from "./pages/admin/administration/MessageLogPage";
 
 function App() {
   return (
@@ -111,6 +112,10 @@ function App() {
               <Route
                 path="administration"
                 element={<AdministrationDashboard />}
+              />
+              <Route
+                path="administration/message-log"
+                element={<MessageLogPage />}
               />
               <Route path="my-dashboard" element={<GenericDashboard />} />
               <Route path="*" element={<NotFound />} />

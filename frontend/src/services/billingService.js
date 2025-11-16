@@ -30,6 +30,44 @@ export const getPresetItems = async () => {
   }
 };
 
+export const createPresetItem = async (itemData) => {
+  const response = await api.post("/billing/preset-items", itemData);
+  return response.data;
+};
+
+export const updatePresetItem = async (itemId, itemData) => {
+  const response = await api.put(`/billing/preset-items/${itemId}`, itemData);
+  return response.data;
+};
+
+export const deletePresetItem = async (itemId) => {
+  const response = await api.delete(`/billing/preset-items/${itemId}`);
+  return response.data;
+};
+
+export const getPresetDiscounts = async () => {
+  const response = await api.get("/billing/discounts");
+  return response.data;
+};
+
+export const createPresetDiscount = async (discountData) => {
+  const response = await api.post("/billing/discounts", discountData);
+  return response.data;
+};
+
+export const updatePresetDiscount = async (discountId, discountData) => {
+  const response = await api.put(
+    `/billing/discounts/${discountId}`,
+    discountData
+  );
+  return response.data;
+};
+
+export const deletePresetDiscount = async (discountId) => {
+  const response = await api.delete(`/billing/discounts/${discountId}`);
+  return response.data;
+};
+
 export const getSubscriptions = async () => {
   try {
     const response = await api.get("/billing/subscriptions");

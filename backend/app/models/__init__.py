@@ -22,8 +22,10 @@ def init_db(app):
         from app.models.enrollment_submission_model import EnrollmentSubmission
         from app.models.financial_model import (
             StudentFinancialAccount, PresetChargeItem, Invoice, 
-            InvoiceItem, Payment, Credit, BillingPlan, Subscription
+            InvoiceItem, Payment, Credit, BillingPlan, Subscription,
+            PresetDiscount
         )
         from app.models.subsidy_model import Subsidy
+        from app.models.message_log_model import MessageLog
         
         db.create_all()

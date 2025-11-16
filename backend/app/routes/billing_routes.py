@@ -4,7 +4,7 @@ from app.models import db
 from app.models.staff_model import Staff
 from app.models.super_admin_model import SuperAdmin
 from app.models.student_model import Student
-from app.models.financial_model import StudentFinancialAccount, Invoice, InvoiceItem, Payment, Credit, BillingPlan, Subscription, PresetChargeItem
+from app.models.financial_model import StudentFinancialAccount, Invoice, InvoiceItem, Payment, Credit, BillingPlan, Subscription, PresetChargeItem, PresetDiscount
 from app.models.activity_log_model import log_activity
 from sqlalchemy import func
 from datetime import datetime, date
@@ -32,20 +32,122 @@ def get_billing_plans():
 def create_billing_plan():
     actor = get_actor()
     data = request.get_json()
-    if not data.get('name') or not data.get('items_json'):
+    name = data.get('name')
+    items_json = data.get('items_json')
+
+    if not name or not items_json:
         return jsonify({"error": "Plan name and items are required."}), 400
     
-    new_plan = BillingPlan(name=data['name'], items_json=data['items_json'])
-    db.session.add(new_plan)
-    log_activity(actor, f"Created billing plan template: '{new_plan.name}'", new_plan)
+    plan = BillingPlan.query.filter_by(name=name).first()
+    
+    if plan:
+        plan.items_json = items_json
+        log_activity(actor, f"Updated billing plan template: '{plan.name}'", plan)
+    else:
+        plan = BillingPlan(name=name, items_json=items_json)
+        db.session.add(plan)
+        log_activity(actor, f"Created billing plan template: '{plan.name}'", plan)
+        
     db.session.commit()
-    return jsonify(new_plan.to_dict()), 201
+    return jsonify(plan.to_dict()), 201
+
+# === Preset Items CRUD ===
 
 @billing_bp.route('/preset-items', methods=['GET'])
 @jwt_required()
 def get_preset_items():
     items = PresetChargeItem.query.filter_by(is_active=True).order_by(PresetChargeItem.description).all()
     return jsonify([i.to_dict() for i in items]), 200
+
+@billing_bp.route('/preset-items', methods=['POST'])
+@jwt_required()
+def create_preset_item():
+    actor = get_actor()
+    data = request.get_json()
+    if not data.get('description') or 'amount' not in data:
+        return jsonify({"error": "Description and amount are required."}), 400
+    
+    new_item = PresetChargeItem(
+        description=data['description'],
+        amount=float(data['amount'])
+    )
+    db.session.add(new_item)
+    log_activity(actor, f"Created preset charge: '{new_item.description}'", new_item)
+    db.session.commit()
+    return jsonify(new_item.to_dict()), 201
+
+@billing_bp.route('/preset-items/<int:item_id>', methods=['PUT'])
+@jwt_required()
+def update_preset_item(item_id):
+    actor = get_actor()
+    item = PresetChargeItem.query.get_or_404(item_id)
+    data = request.get_json()
+    
+    item.description = data.get('description', item.description)
+    item.amount = float(data.get('amount', item.amount))
+    item.is_active = data.get('is_active', item.is_active)
+    
+    log_activity(actor, f"Updated preset charge: '{item.description}'", item)
+    db.session.commit()
+    return jsonify(item.to_dict()), 200
+
+@billing_bp.route('/preset-items/<int:item_id>', methods=['DELETE'])
+@jwt_required()
+def delete_preset_item(item_id):
+    actor = get_actor()
+    item = PresetChargeItem.query.get_or_404(item_id)
+    
+    log_activity(actor, f"Deleted preset charge: '{item.description}'", item)
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({"message": "Preset item deleted successfully."}), 200
+
+# === Preset Discounts CRUD ===
+
+@billing_bp.route('/discounts', methods=['GET'])
+@jwt_required()
+def get_preset_discounts():
+    discounts = PresetDiscount.query.filter_by(is_active=True).order_by(PresetDiscount.description).all()
+    return jsonify([d.to_dict() for d in discounts]), 200
+
+@billing_bp.route('/discounts', methods=['POST'])
+@jwt_required()
+def create_preset_discount():
+    actor = get_actor()
+    data = request.get_json()
+    if not data.get('description'):
+        return jsonify({"error": "Description is required."}), 400
+    
+    new_discount = PresetDiscount(description=data['description'])
+    db.session.add(new_discount)
+    log_activity(actor, f"Created preset discount: '{new_discount.description}'", new_discount)
+    db.session.commit()
+    return jsonify(new_discount.to_dict()), 201
+
+@billing_bp.route('/discounts/<int:discount_id>', methods=['PUT'])
+@jwt_required()
+def update_preset_discount(discount_id):
+    actor = get_actor()
+    discount = PresetDiscount.query.get_or_404(discount_id)
+    data = request.get_json()
+    
+    discount.description = data.get('description', discount.description)
+    discount.is_active = data.get('is_active', discount.is_active)
+    
+    log_activity(actor, f"Updated preset discount: '{discount.description}'", discount)
+    db.session.commit()
+    return jsonify(discount.to_dict()), 200
+
+@billing_bp.route('/discounts/<int:discount_id>', methods=['DELETE'])
+@jwt_required()
+def delete_preset_discount(discount_id):
+    actor = get_actor()
+    discount = PresetDiscount.query.get_or_404(discount_id)
+    
+    log_activity(actor, f"Deleted preset discount: '{discount.description}'", discount)
+    db.session.delete(discount)
+    db.session.commit()
+    return jsonify({"message": "Preset discount deleted successfully."}), 200
 
 @billing_bp.route('/subscriptions', methods=['GET'])
 @jwt_required()
@@ -136,7 +238,6 @@ def receive_payment(student_id):
     new_payment = Payment(account_id=account.id, invoice_id=data.get('invoice_id'), amount=float(amount), method=data.get('method', 'Cash'), notes=data.get('notes'), transaction_date=datetime.utcnow())
     db.session.add(new_payment)
     
-    # Optionally update invoice status if paid in full
     if data.get('invoice_id'):
         invoice = Invoice.query.get(data.get('invoice_id'))
         if invoice:
@@ -187,10 +288,8 @@ def get_all_accounts():
         last_payment = Payment.query.filter_by(account_id=account.id).order_by(Payment.transaction_date.desc()).first()
         
         results.append({
-            'student_id': student.id,
-            'student_name': f"{student.first_name} {student.last_name}",
-            'open_balance': balance,
-            'last_invoice_date': last_invoice.created_at.isoformat() if last_invoice else None,
+            'student_id': student.id, 'student_name': f"{student.first_name} {student.last_name}",
+            'open_balance': balance, 'last_invoice_date': last_invoice.created_at.isoformat() if last_invoice else None,
             'last_invoice_amount': last_invoice.total_amount if last_invoice else None,
             'last_payment_date': last_payment.transaction_date.isoformat() if last_payment else None,
             'last_payment_amount': last_payment.amount if last_payment else None
@@ -210,29 +309,22 @@ def get_student_ledger(student_id):
 
     transactions = []
     balance = 0
-    # Combine and sort all transactions chronologically
     all_tx = []
     for inv in invoices: all_tx.append({'type': 'Invoice', 'date': inv.created_at, 'obj': inv})
     for p in payments: all_tx.append({'type': 'Payment', 'date': p.transaction_date, 'obj': p})
     for c in credits: all_tx.append({'type': 'Credit', 'date': c.created_at, 'obj': c})
     all_tx.sort(key=lambda x: x['date'], reverse=True)
     
-    # Calculate running balance
-    for tx_item in reversed(all_tx): # Start from the oldest
-        if tx_item['type'] == 'Invoice':
-            balance += tx_item['obj'].total_amount
-        else: # Payment or Credit
-            balance -= tx_item['obj'].amount
+    for tx_item in reversed(all_tx):
+        if tx_item['type'] == 'Invoice': balance += tx_item['obj'].total_amount
+        else: balance -= tx_item['obj'].amount
         tx_item['balance'] = balance
 
-    for tx_item in all_tx: # Now format for frontend
+    for tx_item in all_tx:
         obj = tx_item['obj']
-        if tx_item['type'] == 'Invoice':
-            transactions.append({'type': 'Invoice', 'date': obj.created_at.isoformat() + 'Z', 'description': ", ".join([i.description for i in obj.items]), 'amount': obj.total_amount, 'status': obj.status, 'balance': tx_item['balance']})
-        elif tx_item['type'] == 'Payment':
-            transactions.append({'type': 'Payment', 'date': obj.transaction_date.isoformat() + 'Z', 'description': f"Payment via {obj.method}", 'amount': -obj.amount, 'status': 'Success', 'balance': tx_item['balance']})
-        elif tx_item['type'] == 'Credit':
-            transactions.append({'type': 'Credit', 'date': obj.created_at.isoformat() + 'Z', 'description': obj.reason, 'amount': -obj.amount, 'status': 'Applied', 'balance': tx_item['balance']})
+        if tx_item['type'] == 'Invoice': transactions.append({'type': 'Invoice', 'date': obj.created_at.isoformat() + 'Z', 'description': ", ".join([i.description for i in obj.items]), 'amount': obj.total_amount, 'status': obj.status, 'balance': tx_item['balance']})
+        elif tx_item['type'] == 'Payment': transactions.append({'type': 'Payment', 'date': obj.transaction_date.isoformat() + 'Z', 'description': f"Payment via {obj.method}", 'amount': -obj.amount, 'status': 'Success', 'balance': tx_item['balance']})
+        elif tx_item['type'] == 'Credit': transactions.append({'type': 'Credit', 'date': obj.created_at.isoformat() + 'Z', 'description': obj.reason, 'amount': -obj.amount, 'status': 'Applied', 'balance': tx_item['balance']})
 
     total_invoiced = sum(inv.total_amount for inv in invoices)
     total_paid = sum(p.amount for p in payments)

@@ -20,6 +20,7 @@ import {
   ArrowRepeat,
   Award,
   ChevronRight,
+  EnvelopeOpen,
 } from "react-bootstrap-icons";
 import { Nav, Badge } from "react-bootstrap";
 import { useAuth } from "../../context/AuthContext";
@@ -109,6 +110,11 @@ const Sidebar = () => {
         icon: <BriefcaseFill />,
         label: "Admin Overview",
         end: true,
+      },
+      {
+        path: "/admin/administration/message-log",
+        icon: <EnvelopeOpen />,
+        label: "Message Log",
       },
     ],
   };

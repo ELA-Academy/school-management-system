@@ -25,6 +25,15 @@ class PresetChargeItem(db.Model):
     def to_dict(self):
         return { 'id': self.id, 'description': self.description, 'amount': self.amount, 'is_active': self.is_active }
 
+class PresetDiscount(db.Model):
+    __tablename__ = 'preset_discounts'
+    id = db.Column(db.Integer, primary_key=True)
+    description = db.Column(db.String(255), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_dict(self):
+        return { 'id': self.id, 'description': self.description, 'is_active': self.is_active }
+
 class Invoice(db.Model):
     __tablename__ = 'invoices'
     id = db.Column(db.Integer, primary_key=True)

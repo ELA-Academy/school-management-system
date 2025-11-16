@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Modal,
   Button,
@@ -8,79 +8,135 @@ import {
   Col,
   ListGroup,
   InputGroup,
-  Card,
+  Alert,
+  Image,
+  Table,
 } from "react-bootstrap";
-import Select from "react-select";
 import DatePicker from "react-datepicker";
 import { v4 as uuidv4 } from "uuid";
-import { Trash, Building } from "react-bootstrap-icons";
+import {
+  Trash,
+  ArrowLeft,
+  StarFill,
+  ShieldShaded,
+} from "react-bootstrap-icons";
 import { showSuccess, showError } from "../../../utils/notificationService";
 import { getAllStudents } from "../../../services/studentService";
+import { getSubsidies } from "../../../services/subsidyService";
 import {
   getBillingPlans,
   getPresetItems,
+  getPresetDiscounts,
   saveBillingPlan,
   createSubscriptions,
 } from "../../../services/billingService";
+import ManagePresetsModal from "./ManagePresetsModal";
+import ManageDiscountsModal from "./ManageDiscountsModal";
+import { format, addMonths, startOfMonth, endOfMonth, setDate } from "date-fns";
+
+const formatCurrency = (amount) =>
+  (amount != null ? amount : 0).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
 
 const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // <-- THIS IS THE FIX (initialized to false)
   const [isSaving, setIsSaving] = useState(false);
 
+  // Data stores
   const [students, setStudents] = useState([]);
   const [planTemplates, setPlanTemplates] = useState([]);
   const [presetItems, setPresetItems] = useState([]);
+  const [discounts, setDiscounts] = useState([]);
+  const [subsidies, setSubsidies] = useState([]);
 
+  // Modal visibility
+  const [showPresetsModal, setShowPresetsModal] = useState(false);
+  const [showDiscountsModal, setShowDiscountsModal] = useState(false);
+
+  // Wizard state
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [studentSearchTerm, setStudentSearchTerm] = useState("");
   const [planData, setPlanData] = useState({
     templateId: "new",
     plan_name: "",
     cycle: "Monthly",
     start_date: new Date(),
     end_date: null,
-    invoice_generation_day: "1",
-    due_day: "1",
+    invoice_generation_day: 1,
+    due_day: 1,
+    billing_cycle_for: "Previous",
     items_json: [
-      { id: uuidv4(), type: "New Item", description: "", amount: "" },
+      {
+        id: uuidv4(),
+        type: "New Item",
+        description: "",
+        value: "",
+        unit: "$",
+        percentValue: "",
+        dollarValue: "",
+      },
     ],
   });
+  const [sendInvoiceAutomatically, setSendInvoiceAutomatically] =
+    useState(true);
+
+  const resetWizard = () => {
+    setStep(1);
+    setSelectedStudentIds([]);
+    setStudentSearchTerm("");
+    setPlanData({
+      templateId: "new",
+      plan_name: "",
+      cycle: "Monthly",
+      start_date: new Date(),
+      end_date: null,
+      invoice_generation_day: 1,
+      due_day: 1,
+      billing_cycle_for: "Previous",
+      items_json: [
+        {
+          id: uuidv4(),
+          type: "New Item",
+          description: "",
+          value: "",
+          unit: "$",
+          percentValue: "",
+          dollarValue: "",
+        },
+      ],
+    });
+  };
+
+  const fetchInitialData = async () => {
+    try {
+      setLoading(true); // Now we set loading to true only when fetching starts
+      const [s, pt, pi, d, sub] = await Promise.all([
+        getAllStudents(),
+        getBillingPlans(),
+        getPresetItems(),
+        getPresetDiscounts(),
+        getSubsidies(),
+      ]);
+      setStudents(s);
+      setPlanTemplates(pt);
+      setPresetItems(pi);
+      setDiscounts(d);
+      setSubsidies(sub);
+    } catch (err) {
+      showError("Failed to load necessary data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (show) {
-      const fetchData = async () => {
-        try {
-          setLoading(true);
-          const [s, pt, pi] = await Promise.all([
-            getAllStudents(),
-            getBillingPlans(),
-            getPresetItems(),
-          ]);
-          setStudents(s);
-          setPlanTemplates(pt);
-          setPresetItems(pi);
-        } catch (err) {
-          showError("Failed to load necessary data.");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchData();
+      fetchInitialData();
     } else {
-      setStep(1);
-      setSelectedStudentIds([]);
-      setPlanData({
-        templateId: "new",
-        plan_name: "",
-        cycle: "Monthly",
-        start_date: new Date(),
-        end_date: null,
-        invoice_generation_day: "1",
-        due_day: "1",
-        items_json: [
-          { id: uuidv4(), type: "New Item", description: "", amount: "" },
-        ],
-      });
+      resetWizard();
     }
   }, [show]);
 
@@ -92,7 +148,15 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
         templateId: "new",
         plan_name: "",
         items_json: [
-          { id: uuidv4(), type: "New Item", description: "", amount: "" },
+          {
+            id: uuidv4(),
+            type: "New Item",
+            description: "",
+            value: "",
+            unit: "$",
+            percentValue: "",
+            dollarValue: "",
+          },
         ],
       });
     } else {
@@ -114,18 +178,37 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
   };
 
   const handleItemChange = (id, field, value) => {
+    const itemType = planData.items_json.find((i) => i.id === id)?.type;
+    if (field === "description" && value === "manage") {
+      if (itemType === "Preset Item") setShowPresetsModal(true);
+      if (itemType === "Discount") setShowDiscountsModal(true);
+      return;
+    }
     const newItems = planData.items_json.map((item) => {
       if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
-        if (field === "description" && item.type === "Preset Item") {
+        let updatedItem = { ...item, [field]: value };
+        if (field === "type")
+          updatedItem = {
+            ...updatedItem,
+            description: "",
+            value: "",
+            unit: "$",
+            percentValue: "",
+            dollarValue: "",
+          };
+        if (field === "description" && updatedItem.type === "Preset Item") {
           const preset = presetItems.find((p) => p.description === value);
-          if (preset) updatedItem.amount = preset.amount;
+          if (preset) updatedItem.value = preset.amount;
         }
-        if (field === "type" && value === "Discount") {
-          updatedItem.amount = -Math.abs(parseFloat(updatedItem.amount) || 0);
+        if (field === "percentValue") {
+          updatedItem.dollarValue = "";
+          updatedItem.unit = "%";
+          updatedItem.value = value;
         }
-        if (field === "type" && value !== "Discount") {
-          updatedItem.amount = Math.abs(parseFloat(updatedItem.amount) || 0);
+        if (field === "dollarValue") {
+          updatedItem.percentValue = "";
+          updatedItem.unit = "$";
+          updatedItem.value = value;
         }
         return updatedItem;
       }
@@ -139,7 +222,15 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
       ...planData,
       items_json: [
         ...planData.items_json,
-        { id: uuidv4(), type: "New Item", description: "", amount: "" },
+        {
+          id: uuidv4(),
+          type: "New Item",
+          description: "",
+          value: "",
+          unit: "$",
+          percentValue: "",
+          dollarValue: "",
+        },
       ],
     });
   const removeItem = (id) =>
@@ -149,21 +240,20 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
     });
 
   const handleSaveTemplate = async () => {
-    if (!planData.plan_name) {
-      showError("Please enter a plan name to save it as a template.");
-      return;
-    }
+    if (!planData.plan_name)
+      return showError("Please enter a plan name to save it as a template.");
     setIsSaving(true);
     try {
+      const itemsToSave = processedItems.map(({ id, amount, ...rest }) => rest);
       const newTemplate = await saveBillingPlan({
         name: planData.plan_name,
-        items_json: planData.items_json,
+        items_json: itemsToSave,
       });
       setPlanTemplates([...planTemplates, newTemplate]);
       setPlanData({ ...planData, templateId: newTemplate.id });
       showSuccess("Template saved successfully!");
     } catch (err) {
-      showError("Failed to save template.");
+      showError(err.response?.data?.error || "Failed to save template.");
     } finally {
       setIsSaving(false);
     }
@@ -172,92 +262,212 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
   const handleCreatePlan = async () => {
     setIsSaving(true);
     try {
+      const finalItems = processedItems.map(
+        ({ id, value, unit, percentValue, dollarValue, ...rest }) => rest
+      );
+      const payload = { ...planData, items_json: finalItems };
       await createSubscriptions({
         student_ids: selectedStudentIds,
-        plan_data: planData,
+        plan_data: payload,
       });
-      showSuccess("Recurring plan created and assigned!");
+      showSuccess("Recurring plan created!");
       onPlanCreated();
     } catch (err) {
-      showError("Failed to create plan.");
+      showError(err.response?.data?.error || "Failed to create plan.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const totalAmount = planData.items_json.reduce(
-    (sum, item) => sum + (parseFloat(item.amount) || 0),
-    0
-  );
-  const templateOptions = [
-    { id: "new", name: "+ Create New Plan" },
-    ...planTemplates,
-  ];
-  const presetOptions = presetItems.map((p) => p.description);
-  const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1).map(String);
-  const formatCurrency = (amount) =>
-    (amount || 0).toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-  const selectedStudents = students.filter((s) =>
-    selectedStudentIds.includes(s.id)
+  const subtotal = useMemo(
+    () =>
+      planData.items_json.reduce((sum, item) => {
+        const value = parseFloat(item.value) || 0;
+        const isCharge = item.type !== "Discount" && item.type !== "Subsidy";
+        if (item.type === "Preset Item") {
+          const preset = presetItems.find(
+            (p) => p.description === item.description
+          );
+          return sum + (preset ? preset.amount : 0);
+        }
+        return isCharge ? sum + value : sum;
+      }, 0),
+    [planData.items_json, presetItems]
   );
 
-  return (
-    <Modal
-      show={show}
-      onHide={handleClose}
-      size="lg"
-      centered
-      backdrop="static"
-    >
-      <Modal.Header closeButton>
-        <Modal.Title>Create Recurring Plan - Step {step}/4</Modal.Title>
-      </Modal.Header>
-      <Modal.Body style={{ minHeight: "450px" }}>
-        {loading && (
-          <div className="text-center p-5">
-            <Spinner />
-          </div>
-        )}
+  const processedItems = useMemo(
+    () =>
+      planData.items_json.map((item) => {
+        let finalAmount = parseFloat(item.value) || 0;
+        if (item.type === "Discount") {
+          finalAmount =
+            item.unit === "%"
+              ? -((finalAmount / 100) * subtotal)
+              : -finalAmount;
+        } else if (item.type === "Subsidy") {
+          finalAmount = -finalAmount;
+        } else if (item.type === "Preset Item") {
+          const preset = presetItems.find(
+            (p) => p.description === item.description
+          );
+          finalAmount = preset ? preset.amount : 0;
+        }
+        return { ...item, amount: finalAmount };
+      }),
+    [planData.items_json, subtotal, presetItems]
+  );
 
-        {!loading && step === 1 && (
-          <div className="d-flex flex-column align-items-center justify-content-center h-100">
-            <h4>Which Plan do you want to create?</h4>
+  const totalAmount = useMemo(
+    () => processedItems.reduce((sum, item) => sum + item.amount, 0),
+    [processedItems]
+  );
+
+  const firstInvoiceInfo = useMemo(() => {
+    try {
+      const { start_date, invoice_generation_day, due_day, billing_cycle_for } =
+        planData;
+      if (!start_date || !invoice_generation_day || !due_day)
+        return {
+          genDate: "N/A",
+          dueDate: "N/A",
+          periodStart: "N/A",
+          periodEnd: "N/A",
+        };
+
+      let firstInvoiceDate = setDate(start_date, invoice_generation_day);
+      if (start_date.getDate() > invoice_generation_day)
+        firstInvoiceDate = addMonths(firstInvoiceDate, 1);
+      const firstDueDate = setDate(firstInvoiceDate, due_day);
+      const periodSourceDate =
+        billing_cycle_for === "Previous"
+          ? addMonths(firstInvoiceDate, -1)
+          : firstInvoiceDate;
+      const periodStart = startOfMonth(periodSourceDate);
+      const periodEnd = endOfMonth(periodSourceDate);
+
+      return {
+        genDate: format(firstInvoiceDate, "MMM d, yyyy"),
+        dueDate: format(firstDueDate, "MMM d, yyyy"),
+        periodStart: format(periodStart, "MMM d, yyyy"),
+        periodEnd: format(periodEnd, "MMM d, yyyy"),
+      };
+    } catch (error) {
+      return {
+        genDate: "Invalid",
+        dueDate: "Invalid",
+        periodStart: "Invalid",
+        periodEnd: "Invalid",
+      };
+    }
+  }, [
+    planData.start_date,
+    planData.invoice_generation_day,
+    planData.due_day,
+    planData.billing_cycle_for,
+  ]);
+
+  const filteredStudents = students.filter((s) =>
+    `${s.first_name} ${s.last_name}`
+      .toLowerCase()
+      .includes(studentSearchTerm.toLowerCase())
+  );
+  const getInitials = (name) =>
+    name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "";
+  const formatDay = (d) => {
+    if (!d) return "";
+    if (d > 3 && d < 21) return `${d}th`;
+    switch (d % 10) {
+      case 1:
+        return `${d}st`;
+      case 2:
+        return `${d}nd`;
+      case 3:
+        return `${d}rd`;
+      default:
+        return `${d}th`;
+    }
+  };
+  const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1);
+
+  const renderStepContent = () => {
+    if (loading)
+      return (
+        <div
+          className="d-flex align-items-center justify-content-center"
+          style={{ minHeight: "400px" }}
+        >
+          <Spinner />
+        </div>
+      );
+    switch (step) {
+      case 1:
+        return (
+          <div className="d-flex flex-column align-items-center justify-content-center h-100 p-5">
+            <h4 className="mb-4">Which Plan do you want to create?</h4>
             <Button
-              variant="primary"
+              variant="outline-primary"
               size="lg"
-              className="my-2 w-50"
+              className="w-75 mb-3 p-3"
               onClick={() => setStep(2)}
             >
-              Tuition Plan{" "}
-              <small className="d-block">(plan with fixed rates)</small>
+              <div className="fw-bold">TUITION PLAN</div>
+              <small>(plan with fixed rates)</small>
             </Button>
+            <div className="text-muted my-2">OR</div>
             <Button
               variant="outline-secondary"
               size="lg"
-              className="w-50"
+              className="w-75 p-3"
               disabled
             >
-              Attendance Plan{" "}
-              <small className="d-block">
-                (dynamic rates based on sign in/out)
-              </small>
+              <div className="fw-bold">ATTENDANCE PLAN</div>
+              <small>(dynamic rates based on sign in/out)</small>
             </Button>
           </div>
-        )}
-
-        {!loading && step === 2 && (
+        );
+      case 2:
+        return (
           <div>
-            <h5>Select Students</h5>
+            <h4 className="mb-3">Select Students</h4>
+            <Form.Control
+              type="text"
+              placeholder="Search..."
+              className="mb-3"
+              value={studentSearchTerm}
+              onChange={(e) => setStudentSearchTerm(e.target.value)}
+            />
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <Form.Check
+                type="checkbox"
+                label="SELECT ALL"
+                checked={
+                  selectedStudentIds.length === filteredStudents.length &&
+                  filteredStudents.length > 0
+                }
+                onChange={(e) =>
+                  setSelectedStudentIds(
+                    e.target.checked ? filteredStudents.map((s) => s.id) : []
+                  )
+                }
+              />
+              <small className="text-muted">
+                {selectedStudentIds.length} STUDENTS SELECTED
+              </small>
+            </div>
             <ListGroup style={{ maxHeight: "400px", overflowY: "auto" }}>
-              {students.map((s) => (
-                <ListGroup.Item key={s.id}>
+              {filteredStudents.map((s) => (
+                <ListGroup.Item
+                  key={s.id}
+                  className="d-flex align-items-center"
+                >
                   <Form.Check
                     type="checkbox"
                     id={`student-${s.id}`}
-                    label={`${s.first_name} ${s.last_name}`}
+                    className="me-3"
                     checked={selectedStudentIds.includes(s.id)}
                     onChange={() =>
                       setSelectedStudentIds((ids) =>
@@ -267,13 +477,36 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                       )
                     }
                   />
+                  <div
+                    style={{
+                      backgroundColor: "#6c757d",
+                      color: "white",
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: "bold",
+                    }}
+                    className="me-3"
+                  >
+                    {getInitials(`${s.first_name} ${s.last_name}`)}
+                  </div>
+                  <label
+                    htmlFor={`student-${s.id}`}
+                    className="w-100"
+                    style={{ cursor: "pointer" }}
+                  >
+                    {s.first_name} {s.last_name}
+                  </label>
                 </ListGroup.Item>
               ))}
             </ListGroup>
           </div>
-        )}
-
-        {!loading && step === 3 && (
+        );
+      case 3:
+        return (
           <Form>
             <Row className="mb-3">
               <Col md={6}>
@@ -282,7 +515,8 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                   value={planData.templateId}
                   onChange={handleTemplateChange}
                 >
-                  {templateOptions.map((t) => (
+                  <option value="new">+ New plan</option>
+                  {planTemplates.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
                     </option>
@@ -302,7 +536,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
               </Col>
             </Row>
             <Row className="mb-3">
-              <Col md={4}>
+              <Col>
                 <Form.Label>Plan Cycle</Form.Label>
                 <Form.Select
                   value={planData.cycle}
@@ -313,7 +547,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                   <option>Monthly</option>
                 </Form.Select>
               </Col>
-              <Col md={4}>
+              <Col>
                 <Form.Label>Plan Start</Form.Label>
                 <DatePicker
                   selected={planData.start_date}
@@ -323,7 +557,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                   className="form-control"
                 />
               </Col>
-              <Col md={4}>
+              <Col>
                 <Form.Label>Plan End (Optional)</Form.Label>
                 <DatePicker
                   selected={planData.end_date}
@@ -331,118 +565,244 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                     setPlanData({ ...planData, end_date: date })
                   }
                   className="form-control"
-                  placeholderText="Select end date"
+                  isClearable
+                  placeholderText="Select month"
                 />
               </Col>
             </Row>
-            <Row className="mb-4 align-items-center">
-              <Form.Label>Generate invoice on</Form.Label>
+            <Row className="mb-3 align-items-end gx-2">
+              <Col xs="auto" className="pe-0" style={{ paddingTop: "32px" }}>
+                Generate invoice on
+              </Col>
               <Col>
                 <Form.Select
                   value={planData.invoice_generation_day}
                   onChange={(e) =>
                     setPlanData({
                       ...planData,
-                      invoice_generation_day: e.target.value,
+                      invoice_generation_day: parseInt(e.target.value),
                     })
                   }
                 >
                   {dayOptions.map((d) => (
                     <option key={d} value={d}>
-                      {d}
-                      {d === "1"
-                        ? "st"
-                        : d === "2"
-                        ? "nd"
-                        : d === "3"
-                        ? "rd"
-                        : "th"}{" "}
-                      day
+                      {formatDay(d)} day
                     </option>
                   ))}
                 </Form.Select>
               </Col>
-              <Col xs="auto">, due on</Col>
+              <Col xs="auto" className="pe-0">
+                , due on
+              </Col>
               <Col>
                 <Form.Select
                   value={planData.due_day}
                   onChange={(e) =>
-                    setPlanData({ ...planData, due_day: e.target.value })
+                    setPlanData({
+                      ...planData,
+                      due_day: parseInt(e.target.value),
+                    })
                   }
                 >
                   {dayOptions.map((d) => (
                     <option key={d} value={d}>
-                      {d}
-                      {d === "1"
-                        ? "st"
-                        : d === "2"
-                        ? "nd"
-                        : d === "3"
-                        ? "rd"
-                        : "th"}{" "}
-                      day
+                      {formatDay(d)} day
                     </option>
                   ))}
                 </Form.Select>
               </Col>
+              <Col xs="auto" className="pe-0">
+                for
+              </Col>
+              <Col>
+                <Form.Select
+                  value={planData.billing_cycle_for}
+                  onChange={(e) =>
+                    setPlanData({
+                      ...planData,
+                      billing_cycle_for: e.target.value,
+                    })
+                  }
+                >
+                  <option value="Previous">Previous</option>
+                  <option value="Current">Current</option>
+                </Form.Select>
+              </Col>
+              <Col xs="auto" className="ps-0">
+                billing cycle.
+              </Col>
             </Row>
-            <hr />
-            <h5 className="mt-3">Invoice Details</h5>
-            {planData.items_json.map((item) => (
-              <Row key={item.id} className="mb-2 align-items-center">
-                <Col md={3}>
+            <Alert variant="success">
+              Your first invoice will be generated on{" "}
+              <strong>{firstInvoiceInfo.genDate}</strong> due on{" "}
+              <strong>{firstInvoiceInfo.dueDate}</strong> for the period of{" "}
+              <strong>{firstInvoiceInfo.periodStart}</strong> to{" "}
+              <strong>{firstInvoiceInfo.periodEnd}</strong>.
+            </Alert>
+
+            <h5 className="mt-4">Invoice Details</h5>
+            <Row className="gx-2 text-muted small mb-1">
+              <Col md={2}>Type</Col>
+              <Col>Item Description</Col>
+              <Col md={3}>Amount</Col>
+              <Col md={1} className="text-end">
+                Total
+              </Col>
+              <Col xs="auto"></Col>
+            </Row>
+            {processedItems.map((item) => (
+              <Row key={item.id} className="mb-2 align-items-center gx-2">
+                <Col md={2}>
                   <Form.Select
                     value={item.type}
                     onChange={(e) =>
                       handleItemChange(item.id, "type", e.target.value)
                     }
                   >
-                    <option>New Item</option>
                     <option>Preset Item</option>
                     <option>Discount</option>
+                    <option>Subsidy</option>
+                    <option>New Item</option>
                   </Form.Select>
                 </Col>
-                <Col>
-                  {item.type === "Preset Item" ? (
+                {item.type === "Discount" ? (
+                  <Col md={7} className="d-flex align-items-center">
+                    <InputGroup>
+                      <Form.Control
+                        type="number"
+                        placeholder="0"
+                        value={item.percentValue}
+                        onChange={(e) =>
+                          handleItemChange(
+                            item.id,
+                            "percentValue",
+                            e.target.value
+                          )
+                        }
+                      />
+                      <InputGroup.Text>%</InputGroup.Text>
+                    </InputGroup>
+                    <span className="mx-2">Or</span>
+                    <InputGroup>
+                      <Form.Control
+                        type="number"
+                        placeholder="0"
+                        value={item.dollarValue}
+                        onChange={(e) =>
+                          handleItemChange(
+                            item.id,
+                            "dollarValue",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </InputGroup>
                     <Form.Select
+                      className="ms-2"
                       value={item.description}
                       onChange={(e) =>
                         handleItemChange(item.id, "description", e.target.value)
                       }
                     >
-                      <option>Select a preset...</option>
-                      {presetOptions.map((p) => (
-                        <option key={p}>{p}</option>
+                      <option value="">Financial Aid</option>
+                      {discounts.map((d) => (
+                        <option key={d.id} value={d.description}>
+                          {d.description}
+                        </option>
                       ))}
+                      <option
+                        value="manage"
+                        style={{ fontStyle: "italic", color: "blue" }}
+                      >
+                        + Manage Discounts
+                      </option>
                     </Form.Select>
-                  ) : (
-                    <Form.Control
-                      type="text"
-                      placeholder="Item Description"
-                      value={item.description}
-                      onChange={(e) =>
-                        handleItemChange(item.id, "description", e.target.value)
-                      }
-                    />
-                  )}
-                </Col>
-                <Col xs={4} md={3}>
-                  <InputGroup>
-                    <InputGroup.Text>$</InputGroup.Text>
-                    <Form.Control
-                      type="number"
-                      step="0.01"
-                      value={item.amount}
-                      onChange={(e) =>
-                        handleItemChange(item.id, "amount", e.target.value)
-                      }
-                    />
-                  </InputGroup>
+                  </Col>
+                ) : (
+                  <>
+                    <Col>
+                      {item.type === "Preset Item" && (
+                        <Form.Select
+                          value={item.description}
+                          onChange={(e) =>
+                            handleItemChange(
+                              item.id,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                        >
+                          <option value="">Add Invoice Description</option>
+                          {presetItems.map((p) => (
+                            <option key={p.id} value={p.description}>
+                              {p.description}
+                            </option>
+                          ))}
+                          <option
+                            value="manage"
+                            style={{ fontStyle: "italic", color: "blue" }}
+                          >
+                            + Manage Presets
+                          </option>
+                        </Form.Select>
+                      )}
+                      {item.type === "Subsidy" && (
+                        <Form.Select
+                          value={item.description}
+                          onChange={(e) =>
+                            handleItemChange(
+                              item.id,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                        >
+                          <option value="">Select subsidy...</option>
+                          {subsidies.map((s) => (
+                            <option key={s.id} value={s.name}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      )}
+                      {item.type === "New Item" && (
+                        <Form.Control
+                          type="text"
+                          value={item.description}
+                          onChange={(e) =>
+                            handleItemChange(
+                              item.id,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Item description"
+                        />
+                      )}
+                    </Col>
+                    <Col md={3}>
+                      <InputGroup>
+                        <InputGroup.Text>$</InputGroup.Text>
+                        <Form.Control
+                          type="number"
+                          step="0.01"
+                          value={item.value}
+                          onChange={(e) =>
+                            handleItemChange(item.id, "value", e.target.value)
+                          }
+                          disabled={item.type === "Preset Item"}
+                        />
+                      </InputGroup>
+                    </Col>
+                  </>
+                )}
+                <Col md={1} className="text-end fw-bold">
+                  {formatCurrency(item.amount)}
                 </Col>
                 <Col xs="auto">
                   <Button
                     variant="link"
-                    className="text-danger"
+                    className="text-danger p-0"
                     onClick={() => removeItem(item.id)}
                   >
                     <Trash />
@@ -450,54 +810,66 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                 </Col>
               </Row>
             ))}
-            <Button variant="link" onClick={addItem}>
-              Add Invoice Item
+            <Button variant="link" onClick={addItem} className="p-0">
+              ADD INVOICE ITEM
             </Button>
-            <div className="text-end fs-5">
+            <div className="text-end fs-4 mt-3 border-top pt-3">
               <strong>Total: {formatCurrency(totalAmount)}</strong>
             </div>
           </Form>
-        )}
-
-        {!loading && step === 4 && (
+        );
+      case 4:
+        const selectedStudents = students.filter((s) =>
+          selectedStudentIds.includes(s.id)
+        );
+        const firstStudent = selectedStudents[0] || {};
+        return (
           <div>
-            <div className="d-flex align-items-center mb-3">
-              <h5 className="mb-0">Submit Plan</h5>
-            </div>
-            <div className="submit-plan-container">
-              <div className="invoice-preview-card">
-                <div className="invoice-preview-header">
-                  <div className="invoice-preview-logo">
-                    <Building />
+            <Row>
+              <Col md={7}>
+                <h5 className="mb-3">Invoice Preview</h5>
+                <div className="invoice-preview-card">
+                  <div className="invoice-preview-header">
+                    <div className="invoice-preview-logo">
+                      <ShieldShaded size={30} />
+                    </div>
+                    <div>
+                      <h6 className="fw-bold mb-0">
+                        Exceptional Learning and Arts Academy
+                      </h6>
+                      <p className="text-muted small mb-0">
+                        P.O. Box 29515, Jacksonville, FL, 32256
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h6 className="fw-bold mb-0">
-                      Exceptional Learning and Arts Academy
-                    </h6>
-                    <p className="text-muted small">
-                      P.O. Box 29515, Jacksonville, FL, 32256
-                    </p>
+                  <div className="invoice-preview-billed-to">
+                    Billed For{" "}
+                    <Image
+                      src="/images/placeholder-avatar.png"
+                      roundedCircle
+                      width={24}
+                      height={24}
+                      className="mx-1"
+                    />
+                    <strong>
+                      {firstStudent.first_name} {firstStudent.last_name}
+                    </strong>
                   </div>
-                </div>
-                <div className="invoice-preview-billed-to">
-                  Billed For
-                  <br />
-                  <strong>
-                    {selectedStudents.length > 0
-                      ? `${selectedStudents[0].first_name} ${selectedStudents[0].last_name}`
-                      : "Student Name"}
-                  </strong>
-                </div>
-                <div className="invoice-preview-details">
-                  <strong>DUE DATE:</strong>{" "}
-                  {new Date(planData.start_date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </div>
-                <div className="invoice-preview-items">
-                  <table>
+                  <div className="invoice-preview-details">
+                    <div>
+                      <strong>DUE DATE:</strong> {firstInvoiceInfo.dueDate}
+                    </div>
+                    <div>
+                      <strong>INVOICE PERIOD:</strong>{" "}
+                      {firstInvoiceInfo.periodStart.toUpperCase()} -{" "}
+                      {firstInvoiceInfo.periodEnd.toUpperCase()}
+                    </div>
+                  </div>
+                  <Table
+                    responsive
+                    borderless
+                    className="invoice-preview-items"
+                  >
                     <thead>
                       <tr>
                         <th>DESCRIPTION</th>
@@ -505,7 +877,7 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {planData.items_json.map((item) => (
+                      {processedItems.map((item) => (
                         <tr key={item.id}>
                           <td>{item.description}</td>
                           <td className="text-end">
@@ -520,24 +892,31 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                         </td>
                       </tr>
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
-              </div>
-              <div>
-                <h6>{selectedStudentIds.length} STUDENT(S) SELECTED</h6>
+              </Col>
+              <Col md={5}>
+                <h6 className="mb-3">
+                  {selectedStudentIds.length} STUDENT(S) SELECTED
+                </h6>
                 <ListGroup className="selected-students-list">
                   {selectedStudents.map((s) => (
                     <ListGroup.Item key={s.id}>
-                      <span>
-                        <strong>
+                      <Image
+                        src="/images/placeholder-avatar.png"
+                        roundedCircle
+                        width={32}
+                        height={32}
+                      />
+                      <div className="ms-2 me-auto">
+                        <div className="fw-bold">
                           {s.first_name} {s.last_name}
-                        </strong>
-                        <br />
+                        </div>
                         <small className="text-muted">{s.grade_level}</small>
-                      </span>
+                      </div>
                       <Button
                         variant="link"
-                        className="p-0 text-danger"
+                        className="text-danger p-0"
                         onClick={() =>
                           setSelectedStudentIds((ids) =>
                             ids.filter((id) => id !== s.id)
@@ -549,67 +928,118 @@ const CreatePlanWizard = ({ show, handleClose, onPlanCreated }) => {
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
-              </div>
-            </div>
+              </Col>
+            </Row>
             <Form.Check
               type="checkbox"
-              defaultChecked
-              label="Send invoice to parent automatically on each billing cycle."
+              label="Send invoice to parent automatically on each billing cycle"
+              checked={sendInvoiceAutomatically}
+              onChange={(e) => setSendInvoiceAutomatically(e.target.checked)}
               className="mt-4"
             />
+            <style>{`
+                .invoice-preview-card { border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.5rem; background-color: #fff; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
+                .invoice-preview-header { display: flex; align-items: center; gap: 1rem; padding-bottom: 1rem; margin-bottom: 1rem; }
+                .invoice-preview-logo { flex-shrink: 0; width: 50px; height: 50px; border-radius: 0.5rem; background-color: #eef2ff; display: flex; align-items: center; justify-content: center; color: #4f46e5; }
+                .invoice-preview-billed-to { margin-bottom: 1rem; display: flex; align-items: center; font-size: 0.9rem; }
+                .invoice-preview-details { background-color: #f8f9fc; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem; font-size: 0.8rem; color: #6b7280; border: 1px solid #e5e7eb; }
+                .invoice-preview-items { margin: 0 -1.5rem; width: calc(100% + 3rem); }
+                .invoice-preview-items th { text-align: left; color: #6b7280; font-weight: 600; padding: 0 1.5rem 0.5rem; border-bottom: 1px solid #e5e7eb; font-size: 0.75rem; text-transform: uppercase; }
+                .invoice-preview-items td { padding: 0.75rem 1.5rem; border-bottom: 1px solid #e5e7eb; }
+                .invoice-preview-items tbody tr:last-child td { border-bottom: none; }
+                .invoice-preview-items .total-row td { font-weight: 700; font-size: 1.1rem; padding-top: 1rem; border-top: 2px solid #333; }
+                .selected-students-list .list-group-item { display: flex; align-items: center; }
+              `}</style>
           </div>
-        )}
-      </Modal.Body>
-      <Modal.Footer>
-        <div>
-          {step === 3 && (
-            <Button
-              variant="outline-primary"
-              onClick={handleSaveTemplate}
-              disabled={isSaving}
-            >
-              Save as Template
-            </Button>
-          )}
-        </div>
-        <div>
-          <Button
-            variant="secondary"
-            onClick={() => setStep(step - 1)}
-            disabled={step === 1}
-          >
-            Back
-          </Button>
-          {step < 3 && (
-            <Button
-              className="ms-2"
-              onClick={() => setStep(step + 1)}
-              disabled={step === 2 && selectedStudentIds.length === 0}
-            >
-              Continue
-            </Button>
-          )}
-          {step === 3 && (
-            <Button
-              className="ms-2"
-              onClick={() => setStep(4)}
-              disabled={!planData.plan_name}
-            >
-              Continue
-            </Button>
-          )}
-          {step === 4 && (
-            <Button
-              className="ms-2"
-              onClick={handleCreatePlan}
-              disabled={isSaving}
-            >
-              {isSaving ? <Spinner size="sm" /> : "Create Plan"}
-            </Button>
-          )}
-        </div>
-      </Modal.Footer>
-    </Modal>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      <Modal
+        show={show}
+        onHide={handleClose}
+        size="xl"
+        centered
+        backdrop="static"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {step > 1 && (
+              <Button
+                variant="link"
+                className="p-0 me-2"
+                onClick={() => setStep(step - 1)}
+              >
+                <ArrowLeft size={24} />
+              </Button>
+            )}
+            Submit Plan - Step {step}/4
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ minHeight: "500px", backgroundColor: "#f8f9fc" }}>
+          {renderStepContent()}
+        </Modal.Body>
+        <Modal.Footer className="d-flex justify-content-between align-items-center">
+          <div>
+            {step === 3 && (
+              <Button
+                variant="outline-secondary"
+                onClick={handleSaveTemplate}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <Spinner as="span" size="sm" />
+                ) : (
+                  "Save as Template"
+                )}
+              </Button>
+            )}
+          </div>
+          <div>
+            {step < 4 && (
+              <Button
+                variant="primary"
+                onClick={() => setStep(step + 1)}
+                disabled={
+                  (step === 2 && selectedStudentIds.length === 0) ||
+                  (step === 3 && !planData.plan_name)
+                }
+              >
+                Continue
+              </Button>
+            )}
+            {step === 4 && (
+              <Button
+                onClick={handleCreatePlan}
+                disabled={isSaving || selectedStudentIds.length === 0}
+                style={{
+                  backgroundColor: "#0d6efd",
+                  borderColor: "#0d6efd",
+                  borderRadius: "8px",
+                  padding: "0.6rem 1.5rem",
+                }}
+              >
+                {isSaving ? <Spinner as="span" size="sm" /> : "Create Plan"}
+              </Button>
+            )}
+          </div>
+        </Modal.Footer>
+      </Modal>
+      <ManagePresetsModal
+        show={showPresetsModal}
+        handleClose={() => setShowPresetsModal(false)}
+        onUpdate={fetchInitialData}
+      />
+      <ManageDiscountsModal
+        show={showDiscountsModal}
+        handleClose={() => setShowDiscountsModal(false)}
+        onUpdate={fetchInitialData}
+      />
+    </>
   );
 };
 

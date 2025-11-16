@@ -5,6 +5,7 @@ from app.models.staff_model import Staff
 from app.models.super_admin_model import SuperAdmin
 from app.models.conversation_model import Conversation, Message, StaffMessage, SuperAdminMessage, ConversationParticipant
 from app.models.notification_model import Notification
+from app.models.message_log_model import MessageLog
 from app.utils.notifications import send_email_in_background, send_push_notification
 from sqlalchemy import and_, or_, func
 from datetime import datetime, timezone, timedelta
@@ -162,6 +163,20 @@ def send_message(conversation_id):
     else: # staff
         new_message = StaffMessage(content=content, sender_id=user.id)
     conv.messages.append(new_message)
+    
+    all_participants_in_convo = [p.staff or p.super_admin for p in conv.participants]
+    all_names = sorted([p.name for p in all_participants_in_convo if p])
+    
+    new_log = MessageLog(
+        conversation_id=conversation_id,
+        sender_id=user.id,
+        sender_type=role,
+        sender_name=user.name,
+        recipient_names=", ".join(all_names),
+        content=content
+    )
+    db.session.add(new_log)
+    
     now = datetime.now(timezone.utc)
     notification_cooldown = timedelta(minutes=15)
     other_participants = ConversationParticipant.query.filter(
